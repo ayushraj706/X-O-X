@@ -1,77 +1,33 @@
 "use client";
 
 // app/page.js
-// ─────────────────────────────────────────────────────────────────────────────
-// NeonX Immersive Gaming Suite — Full-Screen Adaptive Hub (Stable Release v4)
-// Features: Stable Handshake Pipeline, Dynamic Keyboards, Alphabet-Number Codes
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// NeonX â€” Real-time Multiplayer Tic-Tac-Toe + WebRTC Voice Call (PUBG Style)
+// System Adaptive Theme Supported (Light / Dark automatic match)
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { db } from "@/lib/firebase";
-import { getApp } from "firebase/app";
-import { 
-  getAuth, 
-  signInWithPopup, 
-  GoogleAuthProvider, 
-  signOut, 
-  onAuthStateChanged 
-} from "firebase/auth";
-import { ref, set, get, onValue, off, update, push } from "firebase/database";
-import { checkWinner, checkDraw, getInitialRoomState } from "@/lib/gameUtils";
+import { ref, set, get, onValue, off, update } from "firebase/database";
+import { generateRoomId, checkWinner, checkDraw, getInitialRoomState } from "@/lib/gameUtils";
 
-const HUB_STATE = {
-  AUTH: "AUTH",
-  STORE: "STORE",
-  DASHBOARD: "DASHBOARD",
+const SCREEN = {
+  HOME: "HOME",
   WAITING: "WAITING",
   PLAYING: "PLAYING",
 };
 
-export default function GamingHub() {
-  const [appState, setAppState] = useState(HUB_STATE.AUTH);
-  const [userProfile, setUserProfile] = useState(null);
-  const [showProfileMenu, setShowProfileMenu] = useState(false);
+export default function Home() {
+  const [screen, setScreen] = useState(SCREEN.HOME);
   const [roomId, setRoomId] = useState("");
-  const [playerRole, setPlayerRole] = useState(null); // "X" | "O" | "SPECTATOR"
+  const [playerRole, setPlayerRole] = useState(null); // "X" | "O"
   const [gameState, setGameState] = useState(null);
   const [error, setError] = useState("");
-  const [isLoading, setIsLoading] = useState(true);
-  const [gateInput, setGateInput] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [joinInput, setJoinInput] = useState("");
   const [errorShake, setErrorShake] = useState(false);
-  const [generatedKeys, setGeneratedKeys] = useState({ playingKey: "", guestKey: "" });
-
-  const [chatMessages, setChatMessages] = useState([]);
-  const [activeMembers, setActiveMembers] = useState({});
-  const [currentMessage, setCurrentMessage] = useState("");
 
   const listenerRef = useRef(null);
-  const authInstance = useRef(null);
-
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const auth = getAuth(getApp());
-      authInstance.current = auth;
-      
-      const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
-        if (user) {
-          const profileData = {
-            uid: user.uid,
-            name: user.displayName || "Anonymous Player",
-            email: user.email,
-            avatar: user.photoURL || `https://api.dicebear.com/7.x/bottts/svg?seed=${user.uid}`,
-          };
-          setUserProfile(profileData);
-          setAppState(HUB_STATE.STORE);
-        } else {
-          setUserProfile(null);
-          setAppState(HUB_STATE.AUTH);
-        }
-        setIsLoading(false);
-      });
-
-      return () => unsubscribeAuth();
-    }
-  }, []);
 
   const detachListener = useCallback(() => {
     if (listenerRef.current) {
@@ -84,205 +40,113 @@ export default function GamingHub() {
     return () => detachListener();
   }, [detachListener]);
 
-  const triggerDiagnosticError = useCallback((message) => {
+  const showError = useCallback((message) => {
     setError(message);
     setErrorShake(true);
     setTimeout(() => setErrorShake(false), 400);
-    setTimeout(() => setError(""), 4000);
+    setTimeout(() => setError(""), 3500);
   }, []);
 
-  const handleGoogleLogin = async () => {
-    if (!authInstance.current) return;
-    setIsLoading(true);
-    const provider = new GoogleAuthProvider();
-    try {
-      await signInWithPopup(authInstance.current, provider);
-    } catch (err) {
-      console.error(err);
-      triggerDiagnosticError("Google entry closed or popup blocked.");
-      setIsLoading(false);
-    }
-  };
+  const subscribeToRoom = useCallback(
+    (id) => {
+      detachListener();
+      const roomRef = ref(db, `rooms/${id}`);
+      listenerRef.current = roomRef;
 
-  const handleLogout = async () => {
-    if (!authInstance.current) return;
-    try {
-      await signOut(authInstance.current);
-      setShowProfileMenu(false);
-      setGateInput("");
-    } catch (err) {
-      triggerDiagnosticError("Signout stream execution failure.");
-    }
-  };
+      onValue(roomRef, (snapshot) => {
+        const data = snapshot.val();
+        if (!data) return;
 
-  // Safe execution handler mapping sync modules across all clients
-  const wireRoomSubServices = useCallback((targetId, currentIdentity, roleKey) => {
-    if (!currentIdentity) return;
+        setGameState(data);
 
-    const msgRef = ref(db, `rooms/${targetId}/global_chat`);
-    onValue(msgRef, (snapshot) => {
-      if (snapshot.exists()) {
-        setChatMessages(Object.values(snapshot.val()));
-      } else {
-        setChatMessages([]);
-      }
-    });
+        if (data.status === "playing" || data.status === "finished") {
+          setScreen(SCREEN.PLAYING);
+        }
+      });
+    },
+    [detachListener]
+  );
 
-    const trackingKey = currentIdentity.name.replace(/[.#$/\[\]]/g, "_") + "_" + currentIdentity.uid.substring(0,4);
-    const membershipNode = ref(db, `rooms/${targetId}/participants/${trackingKey}`);
-    
-    set(membershipNode, {
-      name: currentIdentity.name,
-      avatar: currentIdentity.avatar,
-      role: roleKey || "SPECTATOR"
-    });
-
-    onValue(ref(db, `rooms/${targetId}/participants`), (snapshot) => {
-      if (snapshot.exists()) setActiveMembers(snapshot.val());
-    });
-  }, []);
-
-  const subscribeToRoomLiveSync = useCallback((id, assignedRole) => {
-    detachListener();
-    const roomRef = ref(db, `rooms/${id}`);
-    listenerRef.current = roomRef;
-
-    onValue(roomRef, (snapshot) => {
-      const data = snapshot.val();
-      if (!data) return;
-
-      setGameState(data);
-
-      if (assignedRole === "SPECTATOR") {
-        setAppState(HUB_STATE.PLAYING);
-      } else if (data.status === "playing" || data.status === "finished") {
-        setAppState(HUB_STATE.PLAYING);
-      }
-    });
-  }, [detachListener]);
-
-  // Generates unique code string containing exactly 3 Alphabets followed by 3 Numbers
-  const generateAlphaNumericId = () => {
-    const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-    const numbers = "0123456789";
-    let alphaPart = "";
-    let numericPart = "";
-    for (let i = 0; i < 3; i++) {
-      alphaPart += letters.charAt(Math.floor(Math.random() * letters.length));
-      numericPart += numbers.charAt(Math.floor(Math.random() * numbers.length));
-    }
-    return alphaPart + numericPart;
-  };
-
-  const handleCreateDynamicRoom = async () => {
-    if (!userProfile) return;
+  const handleCreateRoom = async () => {
     setIsLoading(true);
     setError("");
 
     try {
-      const baseId = generateAlphaNumericId(); 
-      const pKey = `PL-${baseId}`; 
-      const gKey = `CM-${baseId}`; 
-      
-      const initialSchema = {
-        ...getInitialRoomState(),
-        playingCode: pKey,
-        guestCode: gKey,
-        status: "waiting",
-        connections: { slotsTaken: 1 }
-      };
+      const id = generateRoomId();
+      const initialState = getInitialRoomState();
 
-      await set(ref(db, `rooms/${baseId}`), initialSchema);
+      await set(ref(db, `rooms/${id}`), initialState);
 
-      setRoomId(baseId);
+      setRoomId(id);
       setPlayerRole("X");
-      setGeneratedKeys({ playingKey: pKey, guestKey: gKey });
-      setGameState(initialSchema);
-      subscribeToRoomLiveSync(baseId, "X");
-      wireRoomSubServices(baseId, userProfile, "X");
-      setAppState(HUB_STATE.WAITING);
+      setGameState(initialState);
+      subscribeToRoom(id);
+      setScreen(SCREEN.WAITING);
     } catch (err) {
-      triggerDiagnosticError("Database synchronized synchronization failure.");
+      console.error("Create room error:", err);
+      showError("Failed to create room. Check your connection.");
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleVerifyGateCode = async () => {
-    if (!userProfile) return;
-    const inputCode = gateInput.trim().toUpperCase();
-    if (!inputCode || inputCode.length < 9) {
-      triggerDiagnosticError("Invalid code gateway validation lengths.");
+  const handleJoinRoom = async () => {
+    const id = joinInput.trim().toUpperCase();
+    if (!id) {
+      showError("Please enter a Room ID.");
+      return;
+    }
+    if (id.length !== 6) {
+      showError("Room ID must be 6 characters.");
       return;
     }
 
     setIsLoading(true);
     setError("");
-    const targetBaseId = inputCode.substring(3);
 
     try {
-      // STABLE FIX: Corrected target address pointer reference targeting data tree nodes safely
-      const snapshot = await get(ref(db, `rooms/${targetBaseId}`));
+      const snapshot = await get(ref(db, `rooms/${id}`));
+
       if (!snapshot.exists()) {
-        triggerDiagnosticError("Active room vector matrix offline.");
+        showError("Room not found. Double-check the Room ID.");
         setIsLoading(false);
         return;
       }
 
-      const serverRoom = snapshot.val();
+      const data = snapshot.val();
 
-      if (inputCode === serverRoom.playingCode) {
-        if (serverRoom.status !== "waiting") {
-          triggerDiagnosticError("Player slots locked and full.");
-          setIsLoading(false);
-          return;
-        }
-
-        await update(ref(db, `rooms/${targetBaseId}`), { 
-          status: "playing",
-          "connections/slotsTaken": 2
-        });
-
-        setRoomId(targetBaseId);
-        setPlayerRole("O");
-        subscribeToRoomLiveSync(targetBaseId, "O");
-        wireRoomSubServices(targetBaseId, userProfile, "O");
-
-      } else if (inputCode === serverRoom.guestCode) {
-        setRoomId(targetBaseId);
-        setPlayerRole("SPECTATOR");
-        subscribeToRoomLiveSync(targetBaseId, "SPECTATOR");
-        wireRoomSubServices(targetBaseId, userProfile, "SPECTATOR");
-      } else {
-        triggerDiagnosticError("Gateway key matching exception.");
+      if (data.status !== "waiting") {
+        showError(
+          data.status === "playing"
+            ? "This room is already full."
+            : "This room's game has ended."
+        );
         setIsLoading(false);
+        return;
       }
+
+      await update(ref(db, `rooms/${id}`), { status: "playing" });
+
+      setRoomId(id);
+      setPlayerRole("O");
+      subscribeToRoom(id);
     } catch (err) {
-      triggerDiagnosticError("Handshake tracker architecture package exception.");
+      console.error("Join room error:", err);
+      showError("Failed to join room. Check your connection.");
       setIsLoading(false);
     }
   };
 
-  const handleBroadcastMessage = (e) => {
-    e.preventDefault();
-    if (!currentMessage.trim() || !roomId || !userProfile) return;
-
-    const chatChannelNode = ref(db, `rooms/${roomId}/global_chat`);
-    const packetRef = push(chatChannelNode);
-    set(packetRef, {
-      sender: userProfile.name,
-      avatar: userProfile.avatar,
-      text: currentMessage.trim(),
-      timestamp: Date.now()
-    });
-    setCurrentMessage("");
-  };
-
   const handleCellClick = async (index) => {
-    if (!gameState || playerRole === "SPECTATOR") return;
+    if (!gameState) return;
     const { board, turn, status, winner } = gameState;
 
-    if (status === "finished" || winner !== "" || turn !== playerRole || board[index] !== "") {
+    if (
+      status === "finished" ||
+      winner !== "" ||
+      turn !== playerRole ||
+      board[index] !== ""
+    ) {
       return;
     }
 
@@ -293,7 +157,7 @@ export default function GamingHub() {
     const result = checkWinner(newBoard);
     const isDraw = !result && checkDraw(newBoard);
 
-    const dataPayload = {
+    const updates = {
       board: newBoard,
       turn: nextTurn,
       status: result || isDraw ? "finished" : "playing",
@@ -302,9 +166,10 @@ export default function GamingHub() {
     };
 
     try {
-      await update(ref(db, `rooms/${roomId}`), dataPayload);
+      await update(ref(db, `rooms/${roomId}`), updates);
     } catch (err) {
-      triggerDiagnosticError("Matrix step execution dropped.");
+      console.error("Move error:", err);
+      showError("Move failed. Try again.");
     }
   };
 
@@ -319,383 +184,431 @@ export default function GamingHub() {
       };
       await update(ref(db, `rooms/${roomId}`), resetState);
     } catch (err) {
-      triggerDiagnosticError("Re-initialization stack tracking failed.");
+      console.error("Reset error:", err);
+      showError("Reset failed. Try again.");
     }
   };
 
   const handleLeaveRoom = () => {
     detachListener();
-    setAppState(HUB_STATE.DASHBOARD);
+    setScreen(SCREEN.HOME);
     setRoomId("");
     setPlayerRole(null);
     setGameState(null);
-    setGateInput("");
+    setJoinInput("");
     setError("");
-    setChatMessages([]);
-    setActiveMembers({});
   };
 
   return (
-    <main className="min-h-screen w-full bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col transition-colors duration-300 relative overflow-hidden">
-      
-      {userProfile && (
-        <header className="w-full px-8 h-20 flex justify-between items-center z-40 border-b border-slate-200/60 dark:border-slate-800/50 bg-white dark:bg-slate-950 shrink-0">
-          <div className="flex items-center gap-2 cursor-pointer" onClick={() => setAppState(HUB_STATE.STORE)}>
-            <span className="text-2xl font-black text-indigo-600 dark:text-indigo-400 tracking-wider">NEONX</span>
-            <span className="text-[9px] bg-indigo-50 dark:bg-indigo-950 border border-indigo-100 dark:border-indigo-900 px-2.5 py-0.5 rounded-md font-extrabold text-indigo-600 dark:text-indigo-400">PRO</span>
+    <main className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex items-center justify-center p-4 py-12 transition-colors duration-300">
+      <div className="w-full max-w-md relative">
+        {error && (
+          <div
+            className={`fixed top-6 left-1/2 -translate-x-1/2 z-50 px-5 py-3 rounded-xl
+              bg-red-50 dark:bg-red-950/90 border border-red-200 dark:border-red-900 text-red-600 dark:text-red-400 text-sm font-medium
+              shadow-xl flex items-center gap-2 transition-all duration-300
+              ${errorShake ? "animate-bounce" : ""}`}
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+            {error}
           </div>
+        )}
 
-          <div className="relative">
-            <button onClick={() => setShowProfileMenu(!showProfileMenu)} className="flex items-center gap-2 p-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-900/60 focus:outline-none">
-              <img src={userProfile.avatar} alt="" className="w-9 h-9 rounded-xl border border-slate-200 dark:border-slate-800 object-cover bg-white" />
-            </button>
-            {showProfileMenu && (
-              <>
-                <div className="fixed inset-0 z-40" onClick={() => setShowProfileMenu(false)} />
-                <div className="absolute right-0 mt-2 w-64 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl p-4 z-50">
-                  <p className="text-sm font-black text-slate-800 dark:text-slate-100 truncate">{userProfile.name}</p>
-                  <p className="text-xs text-slate-400 truncate font-mono mt-0.5">{userProfile.email}</p>
-                  <button onClick={handleLogout} className="w-full mt-3 py-2 bg-rose-50 dark:bg-rose-950/20 text-rose-600 dark:text-rose-400 text-xs font-bold rounded-xl transition">Disconnect</button>
-                </div>
-              </>
-            )}
-          </div>
-        </header>
-      )}
+        {screen === SCREEN.HOME && (
+          <HomeScreen
+            joinInput={joinInput}
+            setJoinInput={setJoinInput}
+            onCreateRoom={handleCreateRoom}
+            onJoinRoom={handleJoinRoom}
+            isLoading={isLoading}
+          />
+        )}
 
-      <div className="flex-1 w-full flex items-center justify-center relative overflow-hidden">
-        {appState === HUB_STATE.AUTH && <AuthScreen onLogin={handleGoogleLogin} isLoading={isLoading} />}
-        {appState === HUB_STATE.STORE && <AppStoreScreen onLock={() => setAppState(HUB_STATE.DASHBOARD)} />}
-        {appState === HUB_STATE.DASHBOARD && <DashboardScreen onCreate={handleCreateDynamicRoom} gateInput={gateInput} setGateInput={setGateInput} onVerify={handleVerifyGateCode} isLoading={isLoading} />}
-        {appState === HUB_STATE.WAITING && <WaitingScreen generatedKeys={generatedKeys} onLeave={handleLeaveRoom} />}
-        {appState === HUB_STATE.PLAYING && gameState && <PlayingScreen gameState={gameState} playerRole={playerRole} roomId={roomId} onCellClick={handleCellClick} onPlayAgain={handlePlayAgain} onLeave={handleLeaveRoom} showError={triggerDiagnosticError} profile={userProfile} chatMessages={chatMessages} activeMembers={activeMembers} currentMessage={currentMessage} setCurrentMessage={setCurrentMessage} onSendChat={handleBroadcastMessage} />}
+        {screen === SCREEN.WAITING && (
+          <WaitingScreen roomId={roomId} onLeave={handleLeaveRoom} />
+        )}
+
+        {screen === SCREEN.PLAYING && gameState && (
+          <PlayingScreen
+            gameState={gameState}
+            playerRole={playerRole}
+            roomId={roomId}
+            onCellClick={handleCellClick}
+            onPlayAgain={handlePlayAgain}
+            onLeave={handleLeaveRoom}
+            showError={showError}
+          />
+        )}
       </div>
     </main>
   );
 }
 
-function AuthScreen({ onLogin, isLoading }) {
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// HOME SCREEN (Adaptive)
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+function HomeScreen({ joinInput, setJoinInput, onCreateRoom, onJoinRoom, isLoading }) {
   return (
-    <div className="w-full min-h-[calc(100vh-5rem)] flex flex-col items-center justify-center bg-white dark:bg-slate-950 px-6 text-center">
-      <div className="w-24 h-24 bg-indigo-600 rounded-3xl flex items-center justify-center mb-8 shadow-xl">
-        <span className="text-white text-5xl font-black">XO</span>
+    <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-8 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.02)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.2)] transition-all">
+      <div className="text-center mb-8">
+        <div className="inline-flex items-center justify-center bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-900 rounded-2xl p-4 mb-4">
+          <span className="text-4xl font-extrabold text-indigo-600 dark:text-indigo-400 tracking-tight">X</span>
+          <span className="text-lg font-medium text-slate-300 dark:text-slate-700 mx-2">vs</span>
+          <span className="text-4xl font-extrabold text-rose-500 dark:text-rose-400 tracking-tight">O</span>
+        </div>
+        <h1 className="text-2xl font-bold tracking-tight text-slate-800 dark:text-slate-100">TicTacToe Online</h1>
+        <p className="text-sm text-slate-400 dark:text-slate-500 mt-1">Play instantly with your friends via room links</p>
       </div>
-      <h1 className="text-4xl font-black tracking-tight text-slate-800 dark:text-slate-100 sm:text-5xl">Universal Game Portal</h1>
-      <button onClick={onLogin} disabled={isLoading} className="mt-10 w-full max-w-sm py-4 px-6 bg-slate-900 text-white dark:bg-white dark:text-slate-900 font-bold rounded-2xl shadow-lg transition duration-200">
-        {isLoading ? "Connecting System..." : "Sign In via Google Secure Auth"}
+
+      <div className="space-y-4">
+        <div>
+          <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-2">Start Fresh</label>
+          <button
+            className="w-full py-3.5 px-4 bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 disabled:bg-indigo-400 text-white font-medium rounded-xl transition shadow-sm flex items-center justify-center gap-2"
+            onClick={onCreateRoom}
+            disabled={isLoading}
+          >
+            {isLoading ? (
+              <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <>
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                Create New Room
+              </>
+            )}
+          </button>
+        </div>
+
+        <div className="flex items-center gap-3 my-4">
+          <div className="h-[1px] bg-slate-100 dark:bg-slate-800 flex-1"></div>
+          <span className="text-xs font-medium text-slate-400 dark:text-slate-500 uppercase tracking-widest">or</span>
+          <div className="h-[1px] bg-slate-100 dark:bg-slate-800 flex-1"></div>
+        </div>
+
+        <div>
+          <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-2">Join a Friend</label>
+          <div className="flex gap-2">
+            <input
+              className="flex-1 px-4 py-3.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 focus:border-indigo-500 dark:focus:border-indigo-400 focus:bg-white dark:focus:bg-slate-900 rounded-xl outline-none font-mono text-center uppercase tracking-widest text-slate-700 dark:text-slate-300 transition"
+              type="text"
+              placeholder="ENTER 6-DIGIT CODE"
+              maxLength={6}
+              value={joinInput}
+              onChange={(e) => setJoinInput(e.target.value.toUpperCase())}
+              disabled={isLoading}
+            />
+            <button
+              className="px-5 bg-slate-900 dark:bg-slate-100 hover:bg-slate-800 dark:hover:bg-slate-200 disabled:bg-slate-200 dark:disabled:bg-slate-800 text-white dark:text-slate-900 disabled:text-slate-400 font-medium rounded-xl transition flex items-center justify-center"
+              onClick={onJoinRoom}
+              disabled={isLoading || joinInput.trim().length !== 6}
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// WAITING SCREEN (Adaptive)
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+function WaitingScreen({ roomId, onLeave }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(roomId);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {}
+  };
+
+  return (
+    <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-8 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.02)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.2)] text-center animate-fade-in">
+      <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-50 dark:bg-indigo-950/50 border border-indigo-100 dark:border-indigo-900/50 mb-6">
+        <span className="w-2 h-2 rounded-full bg-indigo-600 dark:bg-indigo-400 animate-pulse" />
+        <span className="text-xs font-medium text-indigo-700 dark:text-indigo-400 tracking-wide uppercase">You are Player X</span>
+      </div>
+
+      <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100 mb-1">Waiting for Opponent</h2>
+      <p className="text-sm text-slate-400 dark:text-slate-500 mb-6">Send this code to your friend to start playing</p>
+
+      <div
+        className="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 p-5 rounded-xl cursor-pointer group hover:bg-slate-100/70 dark:hover:bg-slate-900/70 transition relative"
+        onClick={handleCopy}
+      >
+        <span className="text-xs text-slate-400 dark:text-slate-500 block uppercase font-semibold tracking-wider mb-1">Room Code</span>
+        <div className="text-3xl font-mono font-bold tracking-widest text-slate-800 dark:text-slate-200">{roomId}</div>
+        <div className="mt-2 text-xs text-indigo-600 dark:text-indigo-400 font-medium flex items-center justify-center gap-1">
+          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+          </svg>
+          {copied ? "Copied to clipboard!" : "Click to copy code"}
+        </div>
+      </div>
+
+      <div className="flex items-center justify-center gap-1.5 my-8">
+        <div className="w-2 h-2 rounded-full bg-slate-300 dark:bg-slate-700 animate-bounce" style={{ animationDelay: '0ms' }} />
+        <div className="w-2 h-2 rounded-full bg-slate-300 dark:bg-slate-700 animate-bounce" style={{ animationDelay: '150ms' }} />
+        <div className="w-2 h-2 rounded-full bg-slate-300 dark:bg-slate-700 animate-bounce" style={{ animationDelay: '300ms' }} />
+      </div>
+
+      <button className="w-full py-3 px-4 bg-slate-50 dark:bg-slate-950 hover:bg-slate-100 dark:hover:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 font-medium rounded-xl transition flex items-center justify-center gap-2" onClick={onLeave}>
+        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+        </svg>
+        Cancel & Leave
       </button>
     </div>
   );
 }
 
-function AppStoreScreen({ onLock }) {
-  return (
-    <div className="w-full min-h-[calc(100vh-5rem)] max-w-6xl px-8 flex flex-col justify-center py-12 text-left">
-      <h2 className="text-4xl font-black tracking-tight text-slate-800 dark:text-slate-100 mb-10">Application Catalog</h2>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-        <div onClick={onLock} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 rounded-3xl cursor-pointer shadow-sm hover:shadow-2xl transition-all duration-300 group">
-          <div className="flex items-center gap-4">
-            <div className="w-16 h-16 font-black text-2xl text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950 rounded-2xl flex items-center justify-center">XO</div>
-            <div>
-              <h3 className="text-lg font-black text-slate-800 dark:text-slate-100">TicTacToe Pro</h3>
-              <p className="text-xs text-slate-400">Mesh Audio System Integrated</p>
-            </div>
-          </div>
-          <p className="text-xs text-slate-400 dark:text-slate-500 mt-4 border-t border-slate-50 dark:border-slate-800 pt-4">Deploy dynamic rooms with native synchronized configuration layers.</p>
-          <div className="mt-6 text-sm font-bold text-indigo-600 dark:text-indigo-400 flex justify-end group-hover:translate-x-1 transition-transform">Initialize Console →</div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function DashboardScreen({ onCreate, gateInput, setGateInput, onVerify, isLoading }) {
-  const handleInputChange = (e) => {
-    let value = e.target.value.toUpperCase();
-    
-    if (value.startsWith("P") && !value.startsWith("PL-") && value.length >= 2) {
-      value = "PL-" + value.substring(1);
-    } else if (value.startsWith("C") && !value.startsWith("CM-") && value.length >= 2) {
-      value = "CM-" + value.substring(1);
-    }
-    setGateInput(value);
-  };
-
-  // Keyboard Optimizer: Check if the 3 characters of alphabet block have been completed
-  const shouldSwitchToNumeric = gateInput.length >= 6 && (gateInput.startsWith("PL-") || gateInput.startsWith("CM-"));
-
-  return (
-    <div className="w-full min-h-[calc(100vh-5rem)] flex items-center justify-center px-6">
-      <div className="w-full max-w-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-8 rounded-3xl shadow-xl text-center">
-        <h2 className="text-3xl font-black text-slate-800 dark:text-slate-100">Room Management</h2>
-        <div className="space-y-4 mt-8">
-          <button onClick={onCreate} disabled={isLoading} className="w-full py-4 bg-indigo-600 text-white font-bold rounded-xl shadow-md">Deploy Matrix Engine Room</button>
-          <div className="flex gap-2 relative">
-            <input 
-              type="text" 
-              // SMART TOGGLE: Keyboard automatically swaps from text letters to number pad as soon as alphabet ends
-              inputMode={shouldSwitchToNumeric ? "decimal" : "text"} 
-              pattern={shouldSwitchToNumeric ? "[0-9]*" : "[A-Z]*"}
-              placeholder="ACCESS KEY (PL- / CM-)" 
-              maxLength={11} 
-              value={gateInput} 
-              onChange={handleInputChange} 
-              className="flex-1 px-4 py-3.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 focus:border-indigo-500 rounded-xl outline-none font-mono text-center text-sm uppercase tracking-wider" 
-            />
-            <button onClick={onVerify} disabled={isLoading || gateInput.trim().length < 11} className="px-6 bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 rounded-xl font-black">→</button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function WaitingScreen({ generatedKeys, onLeave }) {
-  return (
-    <div className="w-full min-h-[calc(100vh-5rem)] flex items-center justify-center px-6">
-      <div className="w-full max-w-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-8 rounded-3xl shadow-xl text-center">
-        <h2 className="text-2xl font-black text-slate-800 dark:text-slate-100 mb-1">Matrix Gateway Active</h2>
-        <div className="space-y-4 mb-8 text-left mt-6">
-          <div className="p-4 bg-indigo-50 dark:bg-indigo-950/20 border border-indigo-100 rounded-2xl">
-            <span className="text-[10px] font-bold text-indigo-600 block">1. Player Key Gateway</span>
-            <div className="text-2xl font-mono font-black text-slate-800 dark:text-slate-100 mt-1 select-all">{generatedKeys.playingKey}</div>
-          </div>
-          <div className="p-4 bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-100 rounded-2xl">
-            <span className="text-[10px] font-bold text-emerald-600 block">2. Live Commentary Feed Key</span>
-            <div className="text-2xl font-mono font-black text-slate-800 dark:text-slate-100 mt-1 select-all">{generatedKeys.guestKey}</div>
-          </div>
-        </div>
-        <button onClick={onLeave} className="w-full py-3.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 text-slate-500 font-bold rounded-xl">Abort Broadcaster</button>
-      </div>
-    </div>
-  );
-}
-
-function PlayingScreen({ 
-  gameState, playerRole, roomId, onCellClick, onPlayAgain, onLeave, showError, profile,
-  chatMessages, activeMembers, currentMessage, setCurrentMessage, onSendChat 
-}) {
-  const { board, turn, status, winner, winLine = [], playingCode, guestCode } = gameState;
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// PLAYING SCREEN + WebRTC Audio (Adaptive)
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+function PlayingScreen({ gameState, playerRole, roomId, onCellClick, onPlayAgain, onLeave, showError }) {
+  const { board, turn, status, winner, winLine = [] } = gameState;
   const isFinished = status === "finished";
-  const isSpectator = playerRole === "SPECTATOR";
-  const isYourTurn = turn === playerRole && !isFinished && !isSpectator;
+  const isYourTurn = turn === playerRole && !isFinished;
 
+  // PUBG style voice hooks
   const [isMicOn, setIsMicOn] = useState(true);
   const [isSpeakerOn, setIsSpeakerOn] = useState(true);
 
   const localStreamRef = useRef(null);
-  const connectedPeersRef = useRef({}); 
-  const meshSignalingRef = useRef(null);
+  const peerConnectionRef = useRef(null);
+  const remoteAudioRef = useRef(null);
 
+  // WebRTC Setup (Serverless configuration using generic STUN servers)
   useEffect(() => {
-    if (typeof window === "undefined" || !profile) return;
+    if (typeof window === "undefined") return;
 
-    const myAudioId = profile.name + "_" + Math.random().toString(36).substring(2, 5);
-    const peerRegistryRef = ref(db, `rooms/${roomId}/voice_mesh/${myAudioId}`);
+    // Create a hidden audio element to stream opponent voice
+    const audioNode = document.createElement("audio");
+    audioNode.autoplay = true;
+    remoteAudioRef.current = audioNode;
 
-    const initMeshAudio = async () => {
+    const setupVoice = async () => {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
         localStreamRef.current = stream;
-        await set(peerRegistryRef, { active: true });
 
-        const wholeMeshRef = ref(db, `rooms/${roomId}/voice_mesh`);
-        meshSignalingRef.current = wholeMeshRef;
+        const pc = new RTCPeerConnection({
+          iceServers: [{ urls: "stun:stun.l.google.com:19302" }]
+        });
+        peerConnectionRef.current = pc;
 
-        onValue(wholeMeshRef, (snapshot) => {
-          if (!snapshot.exists()) return;
-          const currentNodes = snapshot.val();
+        stream.getTracks().forEach(track => pc.addTrack(track, stream));
 
-          Object.keys(currentNodes).forEach((remoteNodeId) => {
-            if (remoteNodeId === myAudioId || connectedPeersRef.current[remoteNodeId]) return;
+        pc.ontrack = (event) => {
+          if (remoteAudioRef.current && event.streams[0]) {
+            remoteAudioRef.current.srcObject = event.streams[0];
+          }
+        };
 
-            const pc = new RTCPeerConnection({
-              iceServers: [{ urls: "stun:stun.l.google.com:19302" }]
-            });
-            stream.getTracks().forEach(track => pc.addTrack(track, stream));
+        // Serverless signaling using existing Firebase Room schema
+        const signalPath = playerRole === "X" ? "signalX" : "signalO";
+        const listenPath = playerRole === "X" ? "signalO" : "signalX";
 
-            const audioEl = document.createElement("audio");
-            audioEl.autoplay = true;
+        pc.onicecandidate = (event) => {
+          if (event.candidate) {
+            set(ref(db, `rooms/${roomId}/ice/${signalPath}/${Date.now()}`), JSON.stringify(event.candidate));
+          }
+        };
 
-            pc.ontrack = (e) => {
-              if (e.streams[0]) audioEl.srcObject = e.streams[0];
-            };
-
-            pc.onicecandidate = (e) => {
-              if (e.candidate) {
-                set(ref(db, `rooms/${roomId}/voice_signals/${remoteNodeId}/${myAudioId}/${Date.now()}`), JSON.stringify(e.candidate));
-              }
-            };
-
-            connectedPeersRef.current[remoteNodeId] = { pc, audioEl };
-
-            if (myAudioId > remoteNodeId) {
-              pc.createOffer().then(async (offer) => {
-                await pc.setLocalDescription(offer);
-                await set(ref(db, `rooms/${roomId}/voice_handshakes/${remoteNodeId}/${myAudioId}`), JSON.stringify(offer));
-              });
+        if (playerRole === "X") {
+          const offer = await pc.createOffer();
+          await pc.setLocalDescription(offer);
+          await set(ref(db, `rooms/${roomId}/sdp/offer`), JSON.stringify(offer));
+        } else {
+          // Delay briefly to allow X offer initialization
+          setTimeout(async () => {
+            const snapshot = await get(ref(db, `rooms/${roomId}/sdp/offer`));
+            if (snapshot.exists()) {
+              await pc.setRemoteDescription(new RTCSessionDescription(JSON.parse(snapshot.val())));
+              const answer = await pc.createAnswer();
+              await pc.setLocalDescription(answer);
+              await set(ref(db, `rooms/${roomId}/sdp/answer`), JSON.stringify(answer));
             }
-          });
+          }, 1000);
+        }
+
+        // Listen for connection states
+        onValue(ref(db, `rooms/${roomId}/sdp/answer`), async (snapshot) => {
+          if (playerRole === "X" && snapshot.exists() && pc.signalingState === "have-local-offer") {
+            await pc.setRemoteDescription(new RTCSessionDescription(JSON.parse(snapshot.val())));
+          }
         });
 
-        onValue(ref(db, `rooms/${roomId}/voice_handshakes/${myAudioId}`), async (snapshot) => {
-          if (!snapshot.exists()) return;
-          const incomingOffers = snapshot.val();
-          Object.keys(incomingOffers).forEach(async (senderId) => {
-            const peerObj = connectedPeersRef.current[senderId];
-            if (!peerObj) return;
-            const pc = peerObj.pc;
-            if (pc.signalingState === "stable") return;
-            
-            await pc.setRemoteDescription(new RTCSessionDescription(JSON.parse(incomingOffers[senderId])));
-            const answer = await pc.createAnswer();
-            await pc.setLocalDescription(answer);
-            await set(ref(db, `rooms/${roomId}/voice_handshakes/${senderId}/${myAudioId}_reply`), JSON.stringify(answer));
-          });
-        });
-
-        onValue(ref(db, `rooms/${roomId}/voice_handshakes`), (snapshot) => {
-          if (!snapshot.exists()) return;
-          const data = snapshot.val();
-          Object.keys(data).forEach(targetId => {
-            Object.keys(data[targetId]).forEach(async (key) => {
-              if (key.endsWith("_reply") && key.startsWith(myAudioId)) {
-                const originalSenderId = targetId;
-                const peerObj = connectedPeersRef.current[originalSenderId];
-                if (peerObj && peerObj.pc.signalingState === "have-local-offer") {
-                  await peerObj.pc.setRemoteDescription(new RTCSessionDescription(JSON.parse(data[targetId][key])));
-                }
-              }
+        onValue(ref(db, `rooms/${roomId}/ice/${listenPath}`), (snapshot) => {
+          if (snapshot.exists()) {
+            const candidates = snapshot.val();
+            Object.values(candidates).forEach(candStr => {
+              try { pc.addIceCandidate(new RTCIceCandidate(JSON.parse(candStr))); } catch(e){}
             });
-          });
-        });
-
-        onValue(ref(db, `rooms/${roomId}/voice_signals/${myAudioId}`), (snapshot) => {
-          if (!snapshot.exists()) return;
-          const foreignIce = snapshot.val();
-          Object.keys(foreignIce).forEach(senderId => {
-            const peerObj = connectedPeersRef.current[senderId];
-            if (!peerObj) return;
-            Object.values(foreignIce[senderId]).forEach(candidateStr => {
-              try { peerObj.pc.addIceCandidate(new RTCIceCandidate(JSON.parse(candidateStr))); } catch(e){}
-            });
-          });
+          }
         });
 
       } catch (err) {
-        showError("Microphone hardware layer allocation failed.");
+        console.warn("Microphone access denied or audio device busy.");
+        showError("Mic access needed for Voice Chat.");
       }
     };
 
-    initMeshAudio();
+    setupVoice();
 
     return () => {
-      remove(peerRegistryRef);
       if (localStreamRef.current) localStreamRef.current.getTracks().forEach(t => t.stop());
-      Object.values(connectedPeersRef.current).forEach(peer => peer.pc.close());
-      if (meshSignalingRef.current) off(meshSignalingRef.current);
-      off(ref(db, `rooms/${roomId}/voice_handshakes`));
-      off(ref(db, `rooms/${roomId}/voice_signals/${myAudioId}`));
+      if (peerConnectionRef.current) peerConnectionRef.current.close();
+      off(ref(db, `rooms/${roomId}/sdp/answer`));
+      off(ref(db, `rooms/${roomId}/ice`));
     };
-  }, [roomId, profile, showError]);
+  }, [roomId, playerRole, showError]);
 
-  const toggleLocalMicStream = () => {
-    const target = !isMicOn;
-    setIsMicOn(target);
+  // Handle PUBG Mic Mute (Stops audio output stream)
+  const toggleMic = () => {
+    const nextState = !isMicOn;
+    setIsMicOn(nextState);
     if (localStreamRef.current) {
-      localStreamRef.current.getAudioTracks().forEach(t => t.enabled = target);
+      localStreamRef.current.getAudioTracks().forEach(track => {
+        track.enabled = nextState;
+      });
     }
   };
 
-  const toggleLocalSpeakerAudio = () => {
-    const target = !isSpeakerOn;
-    setIsSpeakerOn(target);
-    Object.values(connectedPeersRef.current).forEach(peer => {
-      peer.audioEl.muted = !target;
-    });
+  // Handle PUBG Speaker Mute (Mutes incoming streams locally)
+  const toggleSpeaker = () => {
+    const nextState = !isSpeakerOn;
+    setIsSpeakerOn(nextState);
+    if (remoteAudioRef.current) {
+      remoteAudioRef.current.muted = !nextState;
+    }
   };
 
   return (
-    <div className="w-full h-[calc(100vh-5rem)] grid grid-cols-1 lg:grid-cols-4 bg-white dark:bg-slate-950 overflow-hidden">
-      <div className="lg:col-span-2 border-r border-slate-200 dark:border-slate-900 p-6 flex flex-col justify-between overflow-y-auto">
-        <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-900">
-          <div className="flex items-center gap-2 bg-slate-100 dark:bg-slate-900 px-4 py-2 rounded-xl">
-            <span className={`w-2.5 h-2.5 rounded-full ${isSpectator ? "bg-amber-500 animate-pulse" : playerRole === "X" ? "bg-indigo-600" : "bg-rose-500"}`} />
-            <span className="text-xs font-black uppercase">{isSpectator ? "Live Commentator" : `Khiladi: ${playerRole}`}</span>
-          </div>
-          <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-900 p-1 rounded-xl border border-slate-200 dark:border-slate-800">
-            <button onClick={toggleLocalMicStream} className={`p-2 rounded-lg ${isMicOn ? "bg-emerald-500 text-white" : "bg-slate-200 dark:bg-slate-800 text-slate-400 line-through"}`}>
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" /></svg>
-            </button>
-            <button onClick={toggleLocalSpeakerAudio} className={`p-2 rounded-lg ${isSpeakerOn ? "bg-indigo-600 text-white" : "bg-slate-200 dark:bg-slate-800 text-slate-400 line-through"}`}>
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" /></svg>
-            </button>
-          </div>
-          <button onClick={handleLeaveRoom} className="text-xs font-extrabold text-rose-500 bg-rose-50 dark:bg-rose-950/20 px-4 py-2 rounded-xl transition">Leave Hub</button>
+    <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-6 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.02)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.2)] animate-fade-in">
+      {/* Top Utility Bar */}
+      <div className="flex items-center justify-between mb-6 pb-4 border-b border-slate-100 dark:border-slate-800">
+        <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 px-3 py-1.5 rounded-lg">
+          <span className={`w-2 h-2 rounded-full ${playerRole === "X" ? "bg-indigo-600" : "bg-rose-500"}`} />
+          <span className="text-xs font-semibold text-slate-600 dark:text-slate-400">You: {playerRole}</span>
+        </div>
+        
+        {/* PUBG Voice Control Panel */}
+        <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-950 p-1 rounded-xl border border-slate-200/60 dark:border-slate-800 shadow-inner">
+          {/* Mic Button */}
+          <button 
+            onClick={toggleMic}
+            className={`p-2 rounded-lg transition-all active:scale-90 ${isMicOn ? "bg-emerald-500 text-white shadow-sm" : "bg-slate-200 dark:bg-slate-800 text-slate-400 line-through"}`}
+            title={isMicOn ? "Mute Mic" : "Unmute Mic"}
+          >
+            {isMicOn ? (
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+              </svg>
+            ) : (
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+              </svg>
+            )}
+          </button>
+
+          {/* Speaker Button */}
+          <button 
+            onClick={toggleSpeaker}
+            className={`p-2 rounded-lg transition-all active:scale-90 ${isSpeakerOn ? "bg-indigo-600 text-white shadow-sm" : "bg-slate-200 dark:bg-slate-800 text-slate-400 line-through"}`}
+            title={isSpeakerOn ? "Mute Speaker" : "Unmute Speaker"}
+          >
+            {isSpeakerOn ? (
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+              </svg>
+            ) : (
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+              </svg>
+            )}
+          </button>
         </div>
 
-        <div className="grid grid-cols-3 gap-3 bg-slate-100 dark:bg-slate-900 p-3 rounded-3xl aspect-square max-w-md mx-auto w-full my-4">
-          {board.map((cell, i) => {
-            const isWinningCell = winLine.includes(i);
-            return (
-              <button key={i} onClick={() => onCellClick(i)} disabled={!!cell || isFinished || !isYourTurn || isSpectator} className={`w-full h-full bg-white dark:bg-slate-900 border rounded-2xl font-black flex items-center justify-center transition-all ${isWinningCell ? "bg-emerald-50 dark:bg-emerald-950" : ""}`}>
-                {cell === "X" && <span className="text-5xl font-black text-indigo-600 dark:text-indigo-400">X</span>}
-                {cell === "O" && <span className="text-5xl font-black text-rose-500 dark:text-rose-400">O</span>}
-              </button>
-            );
-          })}
-        </div>
-        {isFinished && !isSpectator && <button className="w-full py-4 bg-indigo-600 text-white font-bold rounded-xl" onClick={onPlayAgain}>↺ Re-Initialize Grid Matrix</button>}
+        <button className="text-xs font-medium text-slate-500 hover:text-rose-500 dark:text-slate-400 dark:hover:text-rose-400 transition flex items-center gap-1" onClick={onLeave}>
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+          </svg>
+          Leave
+        </button>
       </div>
 
-      <div className="border-r border-slate-200 dark:border-slate-900 p-6 flex flex-col gap-6 overflow-y-auto bg-slate-50/50 dark:bg-slate-900/10">
-        <div className="space-y-2">
-          <div className="p-3 bg-white dark:bg-slate-900 border rounded-2xl flex flex-col">
-            <span className="text-[9px] font-bold text-indigo-600 uppercase">Player Access Token</span>
-            <span className="text-sm font-mono font-black select-all tracking-wider">{playingCode}</span>
-          </div>
-          <div className="p-3 bg-white dark:bg-slate-900 border rounded-2xl flex flex-col">
-            <span className="text-[9px] font-bold text-emerald-600 uppercase">Guest Commentary Token</span>
-            <span className="text-sm font-mono font-black select-all tracking-wider">{guestCode}</span>
-          </div>
-        </div>
-
-        <div className="flex-1 flex flex-col min-h-0">
-          <span className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Connected Members ({Object.keys(activeMembers).length})</span>
-          <div className="flex-1 space-y-2 overflow-y-auto">
-            {Object.values(activeMembers).map((member, index) => (
-              <div key={index} className="flex items-center justify-between p-3 bg-white dark:bg-slate-900 border rounded-xl">
-                <div className="flex items-center gap-3 min-w-0">
-                  <img src={member.avatar} alt="" className="w-8 h-8 rounded-lg object-cover" />
-                  <div className="min-w-0">
-                    <p className="text-xs font-black truncate">{member.name}</p>
-                    <p className="text-[10px] text-slate-400 uppercase tracking-wider">{member.role === "SPECTATOR" ? "🎙️ Commentary" : `🕹️ Player [${member.role}]`}</p>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      <div className="p-6 flex flex-col h-full bg-white dark:bg-slate-900/20 overflow-hidden lg:col-span-1">
-        <span className="text-xs font-bold text-slate-400 uppercase tracking-widest block mb-4 border-b pb-2">Global Live Chat Hub</span>
-        <div className="flex-1 overflow-y-auto space-y-3 mb-4 pr-1 min-h-0">
-          {chatMessages.map((msg, idx) => (
-            <div key={idx} className="flex items-start gap-2.5 text-left">
-              <img src={msg.avatar} alt="" className="w-7 h-7 rounded-lg object-cover mt-0.5" />
-              <div className="bg-slate-50 dark:bg-slate-900 border p-2.5 rounded-2xl rounded-tl-none min-w-0">
-                <p className="text-[10px] font-black text-indigo-600 truncate">{msg.sender}</p>
-                <p className="text-xs text-slate-700 dark:text-slate-300 break-words mt-0.5">{msg.text}</p>
-              </div>
+      {/* Modern Turn Badge / Winner Announcement */}
+      <div className="text-center mb-6">
+        {isFinished ? (
+          <div className="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 p-4 rounded-xl">
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 block mb-1">Game Over</span>
+            <div className="text-xl font-bold text-slate-800 dark:text-slate-200">
+              {winner === "draw" ? "ðŸ¤ It's a peaceful draw!" : winner === playerRole ? "ðŸŽ‰ Amazing, You Won! ðŸ†" : "ðŸ’€ Better luck next time!"}
             </div>
-          ))}
-        </div>
-        <form onSubmit={onSendChat} className="flex gap-2 border-t pt-3 shrink-0">
-          <input type="text" placeholder="Broadcast chat packet..." value={currentMessage} onChange={(e) => setCurrentMessage(e.target.value)} className="flex-1 px-4 py-3 text-xs bg-slate-50 dark:bg-slate-950 border rounded-xl outline-none focus:border-indigo-500" />
-          <button type="submit" disabled={!currentMessage.trim()} className="px-4 py-3 bg-indigo-600 text-white font-bold rounded-xl text-xs">Send</button>
-        </form>
+          </div>
+        ) : (
+          <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition
+            ${isYourTurn ? "bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-100 dark:border-emerald-900/50 text-emerald-700 dark:text-emerald-400" : "bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-900 text-slate-500 dark:text-slate-400"}`}>
+            <span className={`w-2 h-2 rounded-full ${isYourTurn ? "bg-emerald-500 animate-pulse" : "bg-slate-300 dark:bg-slate-700"}`} />
+            {isYourTurn ? "Your Turn to Move" : "Waiting for Friend's move"}
+          </div>
+        )}
       </div>
+
+      {/* Scoreboard Strip */}
+      <div className="flex justify-between items-center bg-slate-50/50 dark:bg-slate-950/50 border border-slate-100 dark:border-slate-800/60 rounded-xl p-3 mb-6">
+        <div className={`flex-1 text-center py-1.5 rounded-lg transition ${turn === "X" && !isFinished ? "bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800 shadow-sm" : ""}`}>
+          <span className="font-bold text-indigo-600 dark:text-indigo-400 block text-lg">X</span>
+          <span className="text-[10px] text-slate-400 dark:text-slate-500 uppercase font-medium">{playerRole === "X" ? "You" : "Friend"}</span>
+        </div>
+        <div className="w-px h-8 bg-slate-200 dark:bg-slate-800" />
+        <div className={`flex-1 text-center py-1.5 rounded-lg transition ${turn === "O" && !isFinished ? "bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800 shadow-sm" : ""}`}>
+          <span className="font-bold text-rose-500 dark:text-rose-400 block text-lg">O</span>
+          <span className="text-[10px] text-slate-400 dark:text-slate-500 uppercase font-medium">{playerRole === "O" ? "You" : "Friend"}</span>
+        </div>
+      </div>
+
+      {/* Simple Clean Adaptive Board */}
+      <div className="grid grid-cols-3 gap-2 bg-slate-100 dark:bg-slate-950 p-2 rounded-2xl border border-slate-200/40 dark:border-slate-800">
+        {board.map((cell, i) => {
+          const isWinningCell = winLine.includes(i);
+          return (
+            <button
+              key={i}
+              className={`h-24 sm:h-28 bg-white dark:bg-slate-900 border border-slate-200/40 dark:border-slate-800/60 rounded-xl font-bold flex items-center justify-center transition-all relative
+                ${!cell && isYourTurn && !isFinished ? "hover:bg-indigo-50/30 dark:hover:bg-indigo-950/20 cursor-pointer" : "cursor-default"}
+                ${isWinningCell ? "bg-emerald-50 dark:bg-emerald-950 border-emerald-300 dark:border-emerald-800 shadow-inner" : ""}`}
+              onClick={() => onCellClick(i)}
+              disabled={!!cell || isFinished || !isYourTurn}
+            >
+              {cell === "X" && <span className="text-4xl font-extrabold text-indigo-600 dark:text-indigo-400 animate-scale-in">X</span>}
+              {cell === "O" && <span className="text-4xl font-extrabold text-rose-500 dark:text-rose-400 animate-scale-in">O</span>}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Actions */}
+      {isFinished && (
+        <div className="mt-6 space-y-3">
+          <button className="w-full py-3.5 px-4 bg-indigo-600 dark:bg-indigo-500 hover:bg-indigo-700 dark:hover:bg-indigo-600 text-white font-medium rounded-xl transition shadow-sm flex items-center justify-center gap-2" onClick={onPlayAgain}>
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 4.89M9 11l3 3L22 4" />
+            </svg>
+            Play Again
+          </button>
+        </div>
+      )}
     </div>
   );
 }
