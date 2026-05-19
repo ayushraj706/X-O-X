@@ -2,9 +2,8 @@
 
 // app/page.js
 // ─────────────────────────────────────────────────────────────────────────────
-// NeonX Immersive Gaming Suite — Full-Screen Adaptive Hub (Stable Release)
-// Fixed: Handshake Snapshot Pointer Bug causing Client-Side Exception
-// Features: Firebase Google Auth, Dynamic Input Key Filters, Global Mesh Chat.
+// NeonX Immersive Gaming Suite — Full-Screen Adaptive Hub (Stable Release v4)
+// Features: Stable Handshake Pipeline, Dynamic Keyboards, Alphabet-Number Codes
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { useState, useEffect, useCallback, useRef } from "react";
@@ -18,7 +17,7 @@ import {
   onAuthStateChanged 
 } from "firebase/auth";
 import { ref, set, get, onValue, off, update, push } from "firebase/database";
-import { generateRoomId, checkWinner, checkDraw, getInitialRoomState } from "@/lib/gameUtils";
+import { checkWinner, checkDraw, getInitialRoomState } from "@/lib/gameUtils";
 
 const HUB_STATE = {
   AUTH: "AUTH",
@@ -116,6 +115,7 @@ export default function GamingHub() {
     }
   };
 
+  // Safe execution handler mapping sync modules across all clients
   const wireRoomSubServices = useCallback((targetId, currentIdentity, roleKey) => {
     if (!currentIdentity) return;
 
@@ -161,13 +161,26 @@ export default function GamingHub() {
     });
   }, [detachListener]);
 
+  // Generates unique code string containing exactly 3 Alphabets followed by 3 Numbers
+  const generateAlphaNumericId = () => {
+    const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+    const numbers = "0123456789";
+    let alphaPart = "";
+    let numericPart = "";
+    for (let i = 0; i < 3; i++) {
+      alphaPart += letters.charAt(Math.floor(Math.random() * letters.length));
+      numericPart += numbers.charAt(Math.floor(Math.random() * numbers.length));
+    }
+    return alphaPart + numericPart;
+  };
+
   const handleCreateDynamicRoom = async () => {
     if (!userProfile) return;
     setIsLoading(true);
     setError("");
 
     try {
-      const baseId = generateRoomId(); 
+      const baseId = generateAlphaNumericId(); 
       const pKey = `PL-${baseId}`; 
       const gKey = `CM-${baseId}`; 
       
@@ -189,7 +202,7 @@ export default function GamingHub() {
       wireRoomSubServices(baseId, userProfile, "X");
       setAppState(HUB_STATE.WAITING);
     } catch (err) {
-      triggerDiagnosticError("Database synchronization failure.");
+      triggerDiagnosticError("Database synchronized synchronization failure.");
     } finally {
       setIsLoading(false);
     }
@@ -208,7 +221,7 @@ export default function GamingHub() {
     const targetBaseId = inputCode.substring(3);
 
     try {
-      // FIXED: Corrected network pointer trajectory reference directly target base location schema
+      // STABLE FIX: Corrected target address pointer reference targeting data tree nodes safely
       const snapshot = await get(ref(db, `rooms/${targetBaseId}`));
       if (!snapshot.exists()) {
         triggerDiagnosticError("Active room vector matrix offline.");
@@ -245,7 +258,7 @@ export default function GamingHub() {
         setIsLoading(false);
       }
     } catch (err) {
-      triggerDiagnosticError("Handshake tracking package exception.");
+      triggerDiagnosticError("Handshake tracker architecture package exception.");
       setIsLoading(false);
     }
   };
@@ -326,15 +339,15 @@ export default function GamingHub() {
     <main className="min-h-screen w-full bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col transition-colors duration-300 relative overflow-hidden">
       
       {userProfile && (
-        <header className="w-full px-8 h-20 flex justify-between items-center z-40 border-b border-slate-200/60 dark:border-slate-800/50 bg-white dark:bg-slate-950">
+        <header className="w-full px-8 h-20 flex justify-between items-center z-40 border-b border-slate-200/60 dark:border-slate-800/50 bg-white dark:bg-slate-950 shrink-0">
           <div className="flex items-center gap-2 cursor-pointer" onClick={() => setAppState(HUB_STATE.STORE)}>
             <span className="text-2xl font-black text-indigo-600 dark:text-indigo-400 tracking-wider">NEONX</span>
             <span className="text-[9px] bg-indigo-50 dark:bg-indigo-950 border border-indigo-100 dark:border-indigo-900 px-2.5 py-0.5 rounded-md font-extrabold text-indigo-600 dark:text-indigo-400">PRO</span>
           </div>
 
           <div className="relative">
-            <button onClick={() => setShowProfileMenu(!showProfileMenu)} className="flex items-center gap-2 p-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-900/60">
-              <img src={userProfile.avatar} alt="" className="w-9 h-9 rounded-xl border border-slate-200 dark:border-slate-800 object-cover" />
+            <button onClick={() => setShowProfileMenu(!showProfileMenu)} className="flex items-center gap-2 p-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-900/60 focus:outline-none">
+              <img src={userProfile.avatar} alt="" className="w-9 h-9 rounded-xl border border-slate-200 dark:border-slate-800 object-cover bg-white" />
             </button>
             {showProfileMenu && (
               <>
@@ -368,7 +381,7 @@ function AuthScreen({ onLogin, isLoading }) {
         <span className="text-white text-5xl font-black">XO</span>
       </div>
       <h1 className="text-4xl font-black tracking-tight text-slate-800 dark:text-slate-100 sm:text-5xl">Universal Game Portal</h1>
-      <button onClick={onLogin} disabled={isLoading} className="mt-10 w-full max-w-sm py-4 px-6 bg-slate-900 text-white dark:bg-white dark:text-slate-900 font-bold rounded-2xl shadow-lg">
+      <button onClick={onLogin} disabled={isLoading} className="mt-10 w-full max-w-sm py-4 px-6 bg-slate-900 text-white dark:bg-white dark:text-slate-900 font-bold rounded-2xl shadow-lg transition duration-200">
         {isLoading ? "Connecting System..." : "Sign In via Google Secure Auth"}
       </button>
     </div>
@@ -397,11 +410,9 @@ function AppStoreScreen({ onLock }) {
 }
 
 function DashboardScreen({ onCreate, gateInput, setGateInput, onVerify, isLoading }) {
-  // Enhanced auto-prefixing layout with adaptive dynamic formatting
   const handleInputChange = (e) => {
     let value = e.target.value.toUpperCase();
     
-    // Auto-formatting PL and CM prefixes instantly
     if (value.startsWith("P") && !value.startsWith("PL-") && value.length >= 2) {
       value = "PL-" + value.substring(1);
     } else if (value.startsWith("C") && !value.startsWith("CM-") && value.length >= 2) {
@@ -410,8 +421,8 @@ function DashboardScreen({ onCreate, gateInput, setGateInput, onVerify, isLoadin
     setGateInput(value);
   };
 
-  // Check prefix setup to dynamically alter keyboard behavior
-  const isPrefixLocked = gateInput.startsWith("PL-") || gateInput.startsWith("CM-");
+  // Keyboard Optimizer: Check if the 3 characters of alphabet block have been completed
+  const shouldSwitchToNumeric = gateInput.length >= 6 && (gateInput.startsWith("PL-") || gateInput.startsWith("CM-"));
 
   return (
     <div className="w-full min-h-[calc(100vh-5rem)] flex items-center justify-center px-6">
@@ -419,20 +430,19 @@ function DashboardScreen({ onCreate, gateInput, setGateInput, onVerify, isLoadin
         <h2 className="text-3xl font-black text-slate-800 dark:text-slate-100">Room Management</h2>
         <div className="space-y-4 mt-8">
           <button onClick={onCreate} disabled={isLoading} className="w-full py-4 bg-indigo-600 text-white font-bold rounded-xl shadow-md">Deploy Matrix Engine Room</button>
-          
           <div className="flex gap-2 relative">
             <input 
               type="text" 
-              // KEYBOARD LOGIC: If 'PL-' or 'CM-' is written, automatically switch keyboard to numeric mode for room digits
-              inputMode={isPrefixLocked ? "decimal" : "text"} 
-              pattern={isPrefixLocked ? "[0-9]*" : "[A-Z]*"}
+              // SMART TOGGLE: Keyboard automatically swaps from text letters to number pad as soon as alphabet ends
+              inputMode={shouldSwitchToNumeric ? "decimal" : "text"} 
+              pattern={shouldSwitchToNumeric ? "[0-9]*" : "[A-Z]*"}
               placeholder="ACCESS KEY (PL- / CM-)" 
               maxLength={11} 
               value={gateInput} 
               onChange={handleInputChange} 
               className="flex-1 px-4 py-3.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 focus:border-indigo-500 rounded-xl outline-none font-mono text-center text-sm uppercase tracking-wider" 
             />
-            <button onClick={onVerify} disabled={isLoading || gateInput.trim().length < 9} className="px-6 bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 rounded-xl font-black">→</button>
+            <button onClick={onVerify} disabled={isLoading || gateInput.trim().length < 11} className="px-6 bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 rounded-xl font-black">→</button>
           </div>
         </div>
       </div>
