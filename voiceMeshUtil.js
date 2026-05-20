@@ -12,7 +12,7 @@ export class VoiceMeshManager {
     this.myAudioId = `${profile.name}_${Math.random().toString(36).substring(2, 5)}`;
     this.peerRegistryRef = ref(db, `rooms/${roomId}/voice_mesh/${this.myAudioId}`);
     
-    // GitHub Codespaces Fixed Secure Infrastructure Configuration Engine
+    // Core Codespaces Production Relay Architecture over Safe SSL
     this.rtcConfig = {
       iceServers: [
         { urls: "stun:stun.l.google.com:19302" },
@@ -113,7 +113,7 @@ export class VoiceMeshManager {
       });
 
     } catch (err) {
-      this.showError("Microphone allocation stack failed.");
+      this.showError("Microphone hardware trace block allocation failed.");
     }
   }
 
