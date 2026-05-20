@@ -2,13 +2,13 @@
 
 // app/page.js
 // ─────────────────────────────────────────────────────────────────────────────
-// NeonX Immersive Gaming Suite — Cyberpunk Dark UI Edition
-// Features: Dynamic Matrix Grid, Neon Aesthetics, HUD Interface, Auto 9-char Fix.
+// NeonX Immersive Gaming Suite — Bright & Clean Saffron/Green Theme
+// Features: Light UI, Professional Color Palette, Hydration Safety, Auto 9-char Fix.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { db } from "@/lib/firebase";
-import { getApp } from "firebase/app";
+import { getApp, getApps } from "firebase/app";
 import { 
   getAuth, 
   signInWithPopup, 
@@ -29,6 +29,8 @@ const HUB_STATE = {
 };
 
 export default function GamingHub() {
+  const [isMounted, setIsMounted] = useState(false);
+
   const [appState, setAppState] = useState(HUB_STATE.AUTH);
   const [userProfile, setUserProfile] = useState(null);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
@@ -49,28 +51,33 @@ export default function GamingHub() {
   const voiceManagerRef = useRef(null);
 
   useEffect(() => {
+    setIsMounted(true); 
     if (typeof window !== "undefined") {
-      const auth = getAuth(getApp());
-      authInstance.current = auth;
-      
-      const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
-        if (user) {
-          const profileData = {
-            uid: user.uid,
-            name: user.displayName || "Anonymous Player",
-            email: user.email,
-            avatar: user.photoURL || `https://api.dicebear.com/7.x/bottts/svg?seed=${user.uid}`,
-          };
-          setUserProfile(profileData);
-          setAppState(HUB_STATE.STORE);
-        } else {
-          setUserProfile(null);
-          setAppState(HUB_STATE.AUTH);
-        }
-        setIsLoading(false);
-      });
+      try {
+        const auth = getApps().length > 0 ? getAuth(getApp()) : getAuth();
+        authInstance.current = auth;
+        
+        const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
+          if (user) {
+            const profileData = {
+              uid: user.uid,
+              name: user.displayName || "Anonymous Player",
+              email: user.email,
+              avatar: user.photoURL || `https://api.dicebear.com/7.x/bottts/svg?seed=${user.uid}`,
+            };
+            setUserProfile(profileData);
+            setAppState(HUB_STATE.STORE);
+          } else {
+            setUserProfile(null);
+            setAppState(HUB_STATE.AUTH);
+          }
+          setIsLoading(false);
+        });
 
-      return () => unsubscribeAuth();
+        return () => unsubscribeAuth();
+      } catch (e) {
+        setIsLoading(false);
+      }
     }
   }, []);
 
@@ -101,7 +108,6 @@ export default function GamingHub() {
     try {
       await signInWithPopup(authInstance.current, provider);
     } catch (err) {
-      console.error(err);
       triggerDiagnosticError("Login Sequence Aborted.");
       setIsLoading(false);
     }
@@ -218,7 +224,6 @@ export default function GamingHub() {
     if (!userProfile) return;
     const inputCode = gateInput.trim().toUpperCase();
     
-    // YAHAN 11 KI JAGAH 9 KAR DIYA HAI (FIXED)
     if (!inputCode || inputCode.length < 9) {
       triggerDiagnosticError("Invalid access token format.");
       return;
@@ -289,9 +294,7 @@ export default function GamingHub() {
     if (!gameState || playerRole === "SPECTATOR") return;
     const { board, turn, status, winner } = gameState;
 
-    if (status === "finished" || winner !== "" || turn !== playerRole || board[index] !== "") {
-      return;
-    }
+    if (status === "finished" || winner !== "" || turn !== playerRole || board[index] !== "") return;
 
     const newBoard = [...board];
     newBoard[index] = playerRole;
@@ -342,42 +345,46 @@ export default function GamingHub() {
     setActiveMembers({});
   };
 
-  // GLOBAL DARK THEME WRAPPER
-  return (
-    <main className="min-h-screen w-full bg-[#09090b] text-gray-100 flex flex-col font-sans selection:bg-cyan-500/30 relative overflow-hidden">
-      
-      {/* Dynamic Background Glow */}
-      <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-cyan-900/20 blur-[120px] rounded-full pointer-events-none"></div>
-      <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] bg-purple-900/20 blur-[120px] rounded-full pointer-events-none"></div>
+  if (!isMounted) {
+    return (
+      <div className="min-h-screen w-full bg-slate-50 flex items-center justify-center">
+        <div className="animate-pulse text-orange-500 font-bold tracking-widest text-sm">INITIALIZING...</div>
+      </div>
+    );
+  }
 
-      {/* Global Error HUD */}
+  // GLOBAL LIGHT THEME WRAPPER
+  return (
+    <main className="min-h-screen w-full bg-slate-50 text-slate-900 flex flex-col font-sans selection:bg-orange-500/20 relative overflow-hidden">
+      
+      {/* Global Error Notification */}
       {error && (
-        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-50 bg-red-500/10 border border-red-500/50 text-red-400 px-6 py-2 rounded-lg font-mono text-xs uppercase tracking-widest backdrop-blur-md shadow-[0_0_15px_rgba(239,68,68,0.3)] animate-pulse">
+        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-50 bg-red-100 border border-red-300 text-red-700 px-6 py-2 rounded-xl font-bold text-sm shadow-lg animate-bounce">
           ⚠️ {error}
         </div>
       )}
 
       {userProfile && (
-        <header className="w-full px-8 h-20 flex justify-between items-center z-40 border-b border-white/5 bg-black/40 backdrop-blur-md shrink-0">
-          <div className="flex items-center gap-3 cursor-pointer group" onClick={() => setAppState(HUB_STATE.STORE)}>
-            <div className="w-8 h-8 bg-cyan-500/10 border border-cyan-500/30 rounded-md flex items-center justify-center group-hover:bg-cyan-500/20 transition-all">
-              <span className="text-cyan-400 font-black text-sm">NX</span>
+        <header className="w-full px-6 lg:px-10 h-20 flex justify-between items-center z-40 bg-white border-b border-slate-200 shadow-sm shrink-0">
+          <div className="flex items-center gap-3 cursor-pointer" onClick={() => setAppState(HUB_STATE.STORE)}>
+            <div className="w-10 h-10 bg-orange-100 rounded-xl flex items-center justify-center border border-orange-200">
+              <span className="text-orange-600 font-black text-lg">NX</span>
             </div>
-            <span className="text-xl font-black tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-500">NEON<span className="text-cyan-400">X</span></span>
+            <span className="text-2xl font-black tracking-tight text-slate-800">Neon<span className="text-orange-500">X</span></span>
           </div>
 
           <div className="relative">
             <button onClick={() => setShowProfileMenu(!showProfileMenu)} className="flex items-center gap-2 hover:opacity-80 transition-opacity focus:outline-none">
-              <img src={userProfile.avatar} alt="Profile" className="w-10 h-10 rounded-lg border border-white/10 object-cover bg-gray-900 shadow-[0_0_10px_rgba(255,255,255,0.05)]" />
+              <img src={userProfile.avatar} alt="Profile" className="w-11 h-11 rounded-full border-2 border-orange-100 object-cover shadow-sm bg-slate-100" />
             </button>
             {showProfileMenu && (
               <>
                 <div className="fixed inset-0 z-40" onClick={() => setShowProfileMenu(false)} />
-                <div className="absolute right-0 mt-3 w-64 bg-[#121214] border border-white/10 rounded-xl shadow-2xl p-4 z-50 backdrop-blur-xl">
-                  <p className="text-sm font-bold text-gray-100 truncate">{userProfile.name}</p>
-                  <p className="text-[10px] text-gray-500 truncate font-mono mt-1">{userProfile.email}</p>
-                  <div className="h-px w-full bg-white/5 my-3"></div>
-                  <button onClick={handleLogout} className="w-full py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 text-xs font-bold rounded-lg transition-all tracking-wider uppercase">Disconnect</button>
+                <div className="absolute right-0 mt-3 w-64 bg-white border border-slate-200 rounded-2xl shadow-xl p-5 z-50">
+                  <p className="text-base font-bold text-slate-800 truncate">{userProfile.name}</p>
+                  <p className="text-xs text-slate-500 truncate mt-1">{userProfile.email}</p>
+                  <div className="h-px w-full bg-slate-100 my-4"></div>
+                  <button onClick={handleLogout} className="w-full py-2.5 bg-red-50 hover:bg-red-100 text-red-600 font-bold rounded-xl transition-colors">Log Out</button>
                 </div>
               </>
             )}
@@ -397,24 +404,21 @@ export default function GamingHub() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// GAMING THEMED UI COMPONENTS
+// BRIGHT & PROFESSIONAL UI COMPONENTS
 // ─────────────────────────────────────────────────────────────────────────────
 
 function AuthScreen({ onLogin, isLoading }) {
   return (
     <div className="w-full flex flex-col items-center justify-center px-6 text-center">
-      <div className="relative mb-8 group">
-        <div className="absolute inset-0 bg-cyan-500 blur-3xl opacity-20 group-hover:opacity-40 transition-opacity duration-1000"></div>
-        <div className="w-28 h-28 bg-[#121214] border border-cyan-500/30 rounded-3xl flex items-center justify-center shadow-[0_0_30px_rgba(6,182,212,0.15)] relative z-10">
-          <span className="text-cyan-400 text-6xl font-black tracking-tighter">NX</span>
-        </div>
+      <div className="w-28 h-28 bg-orange-500 rounded-3xl flex items-center justify-center shadow-2xl shadow-orange-500/30 mb-8 transform rotate-3">
+        <span className="text-white text-6xl font-black -rotate-3">NX</span>
       </div>
-      <h1 className="text-4xl font-black tracking-tight text-white sm:text-5xl mb-2 uppercase">NeonX Protocol</h1>
-      <p className="text-gray-400 font-mono text-sm mb-12 tracking-widest uppercase">Secure Identity Verification</p>
+      <h1 className="text-4xl lg:text-5xl font-black tracking-tight text-slate-900 mb-3">Welcome to NeonX</h1>
+      <p className="text-slate-500 text-sm mb-12 max-w-sm mx-auto">Connect securely to start your immersive gaming and voice experience.</p>
       
-      <button onClick={onLogin} disabled={isLoading} className="relative overflow-hidden group w-full max-w-sm py-4 px-6 bg-[#121214] text-white font-bold rounded-xl border border-white/10 hover:border-cyan-500/50 transition-all duration-300 flex items-center justify-center gap-3 shadow-[0_0_0_rgba(6,182,212,0)] hover:shadow-[0_0_20px_rgba(6,182,212,0.2)]">
-        <svg className="w-5 h-5" viewBox="0 0 24 24"><path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" /><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" /><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" /><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" /></svg>
-        <span className="tracking-widest uppercase text-xs">{isLoading ? "Connecting to server..." : "Initialize Session"}</span>
+      <button onClick={onLogin} disabled={isLoading} className="w-full max-w-sm py-4 px-6 bg-white text-slate-800 font-bold rounded-2xl border border-slate-200 shadow-sm hover:shadow-md hover:border-orange-300 transition-all flex items-center justify-center gap-4">
+        <svg className="w-6 h-6" viewBox="0 0 24 24"><path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" /><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" /><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" /><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" /></svg>
+        <span>{isLoading ? "Connecting safely..." : "Continue with Google"}</span>
       </button>
     </div>
   );
@@ -423,32 +427,24 @@ function AuthScreen({ onLogin, isLoading }) {
 function AppStoreScreen({ onLock }) {
   return (
     <div className="w-full max-w-5xl px-6 flex flex-col justify-center text-left">
-      <div className="flex items-center gap-4 mb-10">
-        <div className="h-px flex-1 bg-gradient-to-r from-transparent to-white/10"></div>
-        <h2 className="text-xl font-black tracking-widest text-white uppercase font-mono">Select Module</h2>
-        <div className="h-px flex-1 bg-gradient-to-l from-transparent to-white/10"></div>
-      </div>
+      <h2 className="text-3xl font-black text-slate-800 mb-8 text-center lg:text-left">Select Module</h2>
       
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <div onClick={onLock} className="bg-[#121214] border border-white/5 p-6 rounded-2xl cursor-pointer hover:border-cyan-500/50 transition-all duration-300 group relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-cyan-500/10 rounded-full blur-3xl group-hover:bg-cyan-500/20 transition-all"></div>
-          
-          <div className="flex items-center gap-4 relative z-10">
-            <div className="w-14 h-14 bg-black border border-cyan-500/30 rounded-xl flex items-center justify-center shadow-inner">
-              <span className="font-black text-xl text-cyan-400">XO</span>
+        <div onClick={onLock} className="bg-white border border-slate-200 p-6 rounded-3xl cursor-pointer hover:border-orange-400 hover:shadow-xl transition-all duration-300 group">
+          <div className="flex items-center gap-5">
+            <div className="w-16 h-16 bg-orange-50 rounded-2xl flex items-center justify-center text-orange-600 font-black text-2xl group-hover:bg-orange-500 group-hover:text-white transition-colors">
+              XO
             </div>
             <div>
-              <h3 className="text-lg font-black text-white tracking-wide">TicTacToe Core</h3>
-              <p className="text-[10px] text-cyan-500 uppercase tracking-widest mt-1">Voice Mesh Enabled</p>
+              <h3 className="text-xl font-black text-slate-800">TicTacToe Pro</h3>
+              <p className="text-xs text-emerald-600 font-bold mt-1 bg-emerald-50 inline-block px-2 py-0.5 rounded-md">Voice Enabled</p>
             </div>
           </div>
-          
-          <p className="text-xs text-gray-500 mt-6 pt-4 border-t border-white/5 font-mono leading-relaxed relative z-10">
-            Deploy low-latency gaming matrix. Synchronized state vectors and real-time audio channels.
+          <p className="text-sm text-slate-500 mt-6 pt-5 border-t border-slate-100 leading-relaxed">
+            Create dynamic rooms, talk with friends in real-time, and play instantly.
           </p>
-          
-          <div className="mt-6 text-[10px] font-black tracking-widest text-cyan-400 uppercase flex justify-end group-hover:translate-x-1 transition-transform relative z-10">
-            Launch Instance →
+          <div className="mt-5 text-sm font-bold text-orange-600 flex justify-end group-hover:translate-x-1 transition-transform">
+            Start Game →
           </div>
         </div>
       </div>
@@ -468,19 +464,18 @@ function DashboardScreen({ onCreate, gateInput, setGateInput, onVerify, isLoadin
 
   return (
     <div className="w-full flex items-center justify-center px-6">
-      <div className="w-full max-w-md bg-[#121214] border border-white/10 p-8 rounded-2xl shadow-2xl relative overflow-hidden">
-        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-cyan-500 to-purple-500"></div>
-        <h2 className="text-xl font-black text-white uppercase tracking-widest text-center mb-8 font-mono">Server Gateway</h2>
+      <div className="w-full max-w-md bg-white border border-slate-200 p-8 rounded-3xl shadow-xl">
+        <h2 className="text-2xl font-black text-slate-800 text-center mb-8">Room Dashboard</h2>
         
         <div className="space-y-6">
-          <button onClick={onCreate} disabled={isLoading} className="w-full py-4 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 border border-cyan-500/50 font-black tracking-widest uppercase text-xs rounded-xl transition-all shadow-[0_0_15px_rgba(6,182,212,0.15)] hover:shadow-[0_0_25px_rgba(6,182,212,0.3)]">
-            Deploy Host Server
+          <button onClick={onCreate} disabled={isLoading} className="w-full py-4 bg-orange-500 hover:bg-orange-600 text-white font-black text-lg rounded-2xl transition-colors shadow-md shadow-orange-500/20">
+            Create New Room
           </button>
           
           <div className="relative flex items-center">
-            <div className="flex-grow border-t border-white/10"></div>
-            <span className="flex-shrink-0 mx-4 text-[10px] text-gray-600 uppercase tracking-widest font-mono">Or Connect</span>
-            <div className="flex-grow border-t border-white/10"></div>
+            <div className="flex-grow border-t border-slate-200"></div>
+            <span className="flex-shrink-0 mx-4 text-xs font-bold text-slate-400 uppercase">Or Join Existing</span>
+            <div className="flex-grow border-t border-slate-200"></div>
           </div>
 
           <div className="flex gap-2">
@@ -488,14 +483,13 @@ function DashboardScreen({ onCreate, gateInput, setGateInput, onVerify, isLoadin
               type="text" 
               inputMode={shouldSwitchToNumeric ? "decimal" : "text"} 
               pattern={shouldSwitchToNumeric ? "[0-9]*" : "[A-Z]*"}
-              placeholder="ENTER ACCESS KEY..." 
-              maxLength={9} // YAHAN 9 FIXED HAI
+              placeholder="Enter Key (PL-/CM-)" 
+              maxLength={9} 
               value={gateInput} 
               onChange={handleInputChange} 
-              className="flex-1 px-4 py-4 bg-black border border-white/10 focus:border-cyan-500 rounded-xl outline-none font-mono text-center text-sm uppercase tracking-widest text-cyan-100 placeholder-gray-700 transition-colors" 
+              className="flex-1 px-5 py-4 bg-slate-50 border border-slate-200 focus:border-orange-500 focus:ring-2 focus:ring-orange-200 rounded-2xl outline-none font-bold text-center text-slate-800 placeholder-slate-400 transition-all" 
             />
-            {/* YAHAN BHI 9 FIXED HAI */}
-            <button onClick={onVerify} disabled={isLoading || gateInput.trim().length < 9} className="px-6 bg-white hover:bg-gray-200 text-black rounded-xl font-black transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+            <button onClick={onVerify} disabled={isLoading || gateInput.trim().length < 9} className="px-6 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-black text-xl transition-colors disabled:opacity-50 disabled:bg-slate-300">
               →
             </button>
           </div>
@@ -508,20 +502,21 @@ function DashboardScreen({ onCreate, gateInput, setGateInput, onVerify, isLoadin
 function WaitingScreen({ generatedKeys, onLeave }) {
   return (
     <div className="w-full flex items-center justify-center px-6">
-      <div className="w-full max-w-md bg-[#121214] border border-cyan-500/30 p-8 rounded-2xl shadow-[0_0_30px_rgba(6,182,212,0.1)] text-center relative">
-        <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[#09090b] px-4 text-[10px] text-cyan-500 font-mono tracking-widest border border-cyan-500/30 rounded-full">SERVER ONLINE</div>
+      <div className="w-full max-w-md bg-white border border-slate-200 p-8 rounded-3xl shadow-xl text-center">
+        <div className="inline-block px-4 py-1 mb-6 bg-emerald-50 text-emerald-600 font-bold text-xs rounded-full border border-emerald-100">SERVER IS ONLINE</div>
+        <h2 className="text-2xl font-black text-slate-800 mb-8">Share these codes</h2>
         
-        <div className="space-y-4 mb-8 text-left mt-6">
-          <div className="p-4 bg-black border border-white/5 rounded-xl relative group">
-            <span className="text-[9px] font-mono tracking-widest text-gray-500 uppercase block mb-1">Player Gateway Key</span>
-            <div className="text-xl font-mono font-black text-cyan-400 tracking-widest select-all">{generatedKeys.playingKey}</div>
+        <div className="space-y-4 mb-8 text-left">
+          <div className="p-4 bg-orange-50 border border-orange-100 rounded-2xl">
+            <span className="text-xs font-bold text-orange-600 uppercase block mb-1">🎮 Player Code (To Play)</span>
+            <div className="text-2xl font-black text-slate-800 tracking-wider select-all">{generatedKeys.playingKey}</div>
           </div>
-          <div className="p-4 bg-black border border-white/5 rounded-xl relative group">
-            <span className="text-[9px] font-mono tracking-widest text-gray-500 uppercase block mb-1">Spectator Feed Key</span>
-            <div className="text-xl font-mono font-black text-purple-400 tracking-widest select-all">{generatedKeys.guestKey}</div>
+          <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl">
+            <span className="text-xs font-bold text-slate-500 uppercase block mb-1">👁️ Spectator Code (To Watch)</span>
+            <div className="text-2xl font-black text-slate-800 tracking-wider select-all">{generatedKeys.guestKey}</div>
           </div>
         </div>
-        <button onClick={onLeave} className="w-full py-3 bg-red-500/10 text-red-400 border border-red-500/20 font-black text-xs uppercase tracking-widest rounded-xl hover:bg-red-500/20 transition-all">Abort Server</button>
+        <button onClick={onLeave} className="w-full py-3.5 bg-white text-slate-500 border border-slate-200 font-bold text-sm rounded-xl hover:bg-slate-50 transition-colors">Cancel & Leave</button>
       </div>
     </div>
   );
@@ -552,67 +547,74 @@ function PlayingScreen({
   };
 
   return (
-    <div className="w-full h-[calc(100vh-5rem)] grid grid-cols-1 lg:grid-cols-4 bg-[#09090b] overflow-hidden">
+    <div className="w-full h-[calc(100vh-5rem)] grid grid-cols-1 lg:grid-cols-4 bg-slate-50 overflow-hidden">
       
-      {/* LEFT COLUMN: HUD & Voice Controls */}
-      <div className="border-r border-white/10 p-4 lg:p-6 flex flex-col gap-4 overflow-y-auto bg-black/50">
+      {/* LEFT COLUMN: Controls & Roster */}
+      <div className="border-r border-slate-200 p-4 lg:p-6 flex flex-col gap-5 overflow-y-auto bg-white shadow-[2px_0_10px_rgba(0,0,0,0.02)] z-10">
         
-        {/* Connection Info */}
-        <div className="p-4 bg-[#121214] border border-white/5 rounded-2xl flex flex-col items-center text-center">
-           <span className="text-[10px] text-gray-500 font-mono uppercase tracking-widest mb-2">Current Role</span>
-           <span className={`px-4 py-1.5 rounded-full text-xs font-black tracking-widest border ${isSpectator ? "bg-purple-500/10 text-purple-400 border-purple-500/30" : playerRole === "X" ? "bg-cyan-500/10 text-cyan-400 border-cyan-500/30" : "bg-pink-500/10 text-pink-400 border-pink-500/30"}`}>
-             {isSpectator ? "SPECTATOR" : `PLAYER [ ${playerRole} ]`}
+        {/* Role Identity */}
+        <div className="p-4 bg-slate-50 border border-slate-100 rounded-2xl flex items-center justify-between">
+           <span className="text-xs text-slate-500 font-bold uppercase">You are</span>
+           <span className={`px-3 py-1 rounded-lg text-xs font-black border ${isSpectator ? "bg-slate-200 text-slate-600 border-slate-300" : playerRole === "X" ? "bg-orange-100 text-orange-600 border-orange-200" : "bg-emerald-100 text-emerald-600 border-emerald-200"}`}>
+             {isSpectator ? "SPECTATOR" : `PLAYER ${playerRole}`}
            </span>
         </div>
 
-        {/* Comms Panel */}
-        <div className="p-4 bg-[#121214] border border-white/5 rounded-2xl">
-          <span className="text-[10px] text-gray-500 font-mono uppercase tracking-widest block mb-3">Comms Link</span>
-          <div className="flex items-center gap-2">
-            <button onClick={toggleLocalMicStream} className={`flex-1 flex justify-center py-2.5 rounded-lg border transition-colors ${isMicOn ? "bg-cyan-500/20 border-cyan-500/50 text-cyan-400" : "bg-red-500/10 border-red-500/30 text-red-400"}`}>
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={isMicOn ? "M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" : "M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4" } /></svg>
+        {/* Voice Controls */}
+        <div className="p-4 bg-slate-50 border border-slate-100 rounded-2xl">
+          <span className="text-xs text-slate-500 font-bold uppercase block mb-3">Voice Chat</span>
+          <div className="flex items-center gap-3">
+            <button onClick={toggleLocalMicStream} className={`flex-1 flex justify-center py-3 rounded-xl border-2 transition-colors ${isMicOn ? "bg-emerald-500 border-emerald-500 text-white shadow-md shadow-emerald-500/20" : "bg-white border-slate-200 text-slate-400"}`}>
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d={isMicOn ? "M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" : "M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4" } /></svg>
             </button>
-            <button onClick={toggleLocalSpeakerAudio} className={`flex-1 flex justify-center py-2.5 rounded-lg border transition-colors ${isSpeakerOn ? "bg-cyan-500/20 border-cyan-500/50 text-cyan-400" : "bg-red-500/10 border-red-500/30 text-red-400"}`}>
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={isSpeakerOn ? "M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" : "M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" } /></svg>
+            <button onClick={toggleLocalSpeakerAudio} className={`flex-1 flex justify-center py-3 rounded-xl border-2 transition-colors ${isSpeakerOn ? "bg-orange-500 border-orange-500 text-white shadow-md shadow-orange-500/20" : "bg-white border-slate-200 text-slate-400"}`}>
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d={isSpeakerOn ? "M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" : "M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" } /></svg>
             </button>
           </div>
         </div>
 
-        {/* Connected Roster */}
-        <div className="flex-1 flex flex-col min-h-0 bg-[#121214] border border-white/5 p-4 rounded-2xl">
-          <span className="text-[10px] text-gray-500 font-mono uppercase tracking-widest block mb-3">Live Roster ({Object.keys(activeMembers).length})</span>
-          <div className="flex-1 space-y-2 overflow-y-auto pr-1 custom-scrollbar">
+        {/* Players List */}
+        <div className="flex-1 flex flex-col min-h-0 bg-white border border-slate-200 rounded-2xl overflow-hidden">
+          <div className="bg-slate-50 px-4 py-3 border-b border-slate-100">
+            <span className="text-xs text-slate-500 font-bold uppercase">People Here ({Object.keys(activeMembers).length})</span>
+          </div>
+          <div className="flex-1 overflow-y-auto p-2 space-y-1 custom-scrollbar">
             {Object.values(activeMembers).map((member, index) => (
-              <div key={index} className="flex items-center gap-3 p-2 bg-black border border-white/5 rounded-lg">
-                <img src={member.avatar} alt="" className="w-8 h-8 rounded-md opacity-80" />
+              <div key={index} className="flex items-center gap-3 p-2 hover:bg-slate-50 rounded-xl transition-colors">
+                <img src={member.avatar} alt="" className="w-9 h-9 rounded-full bg-slate-200 object-cover border border-slate-200" />
                 <div className="min-w-0">
-                  <p className="text-xs font-bold text-gray-200 truncate">{member.name}</p>
-                  <p className={`text-[9px] font-mono tracking-widest uppercase ${member.role === "SPECTATOR" ? "text-purple-400" : "text-cyan-400"}`}>{member.role}</p>
+                  <p className="text-sm font-bold text-slate-800 truncate">{member.name}</p>
+                  <p className={`text-[10px] font-bold uppercase ${member.role === "SPECTATOR" ? "text-slate-400" : member.role === "X" ? "text-orange-500" : "text-emerald-500"}`}>{member.role}</p>
                 </div>
               </div>
             ))}
           </div>
         </div>
         
-        <button onClick={handleLeaveRoom} className="w-full py-3 bg-[#121214] text-red-500 border border-white/5 hover:border-red-500/30 text-xs font-black uppercase tracking-widest rounded-xl transition-colors mt-auto">Disconnect</button>
+        <button onClick={handleLeaveRoom} className="w-full py-3.5 bg-red-50 text-red-600 hover:bg-red-100 font-bold rounded-xl transition-colors mt-auto">Leave Room</button>
       </div>
 
-      {/* CENTER COLUMN: THE MATRIX GRID */}
-      <div className="lg:col-span-2 border-r border-white/10 p-6 flex flex-col items-center justify-center relative">
-        {/* Status Indicator */}
-        <div className="absolute top-8 text-center w-full">
+      {/* CENTER COLUMN: TIC-TAC-TOE BOARD */}
+      <div className="lg:col-span-2 border-r border-slate-200 p-6 flex flex-col items-center justify-center relative bg-slate-50">
+        
+        {/* Game Status */}
+        <div className="absolute top-10 text-center w-full">
            {!isFinished ? (
-              <p className="text-sm font-mono tracking-widest uppercase text-gray-400">
-                Awaiting Input: <span className={turn === "X" ? "text-cyan-400 font-black" : "text-pink-400 font-black"}>Player {turn}</span>
-              </p>
+              <div className="inline-flex items-center gap-2 bg-white px-5 py-2.5 rounded-full shadow-sm border border-slate-200">
+                <span className="text-sm font-bold text-slate-500">Current Turn:</span>
+                <span className={`text-lg font-black ${turn === "X" ? "text-orange-500" : "text-emerald-500"}`}>Player {turn}</span>
+              </div>
            ) : (
-              <p className="text-lg font-mono tracking-widest uppercase font-black text-white">
-                {winner === "draw" ? "Matrix Stalemate" : <span className={winner === "X" ? "text-cyan-400 drop-shadow-[0_0_10px_rgba(6,182,212,0.8)]" : "text-pink-400 drop-shadow-[0_0_10px_rgba(236,72,153,0.8)]"}>Player {winner} Wins</span>}
-              </p>
+              <div className="inline-block bg-white px-8 py-4 rounded-2xl shadow-lg border border-slate-200 animate-bounce">
+                <p className="text-2xl font-black text-slate-800">
+                  {winner === "draw" ? "It's a Tie! 🤝" : <span className={winner === "X" ? "text-orange-500" : "text-emerald-500"}>Player {winner} Wins! 🏆</span>}
+                </p>
+              </div>
            )}
         </div>
 
-        <div className="grid grid-cols-3 gap-3 bg-[#121214] p-4 rounded-3xl aspect-square w-full max-w-sm border border-white/5 shadow-[0_0_40px_rgba(0,0,0,0.5)]">
+        {/* The Grid */}
+        <div className="grid grid-cols-3 gap-3 bg-slate-200 p-4 rounded-3xl aspect-square w-full max-w-sm shadow-inner">
           {board.map((cell, i) => {
             const isWinningCell = winLine.includes(i);
             return (
@@ -620,54 +622,60 @@ function PlayingScreen({
                 key={i} 
                 onClick={() => onCellClick(i)} 
                 disabled={!!cell || isFinished || !isYourTurn || isSpectator} 
-                className={`w-full h-full bg-black border border-white/5 rounded-2xl font-black flex items-center justify-center transition-all duration-300
-                  ${!cell && !isFinished && isYourTurn && !isSpectator ? "hover:bg-white/5 hover:border-white/20 cursor-pointer" : "cursor-default"}
-                  ${isWinningCell ? "bg-white/10 border-white/30 shadow-[inset_0_0_20px_rgba(255,255,255,0.1)]" : ""}
+                className={`w-full h-full bg-white rounded-2xl font-black flex items-center justify-center transition-all duration-200 shadow-sm
+                  ${!cell && !isFinished && isYourTurn && !isSpectator ? "hover:bg-slate-50 cursor-pointer hover:shadow-md transform hover:-translate-y-1" : "cursor-default"}
+                  ${isWinningCell ? (winner === "X" ? "bg-orange-100 border-2 border-orange-400" : "bg-emerald-100 border-2 border-emerald-400") : ""}
                 `}
               >
-                {cell === "X" && <span className="text-6xl font-black text-cyan-400 drop-shadow-[0_0_15px_rgba(6,182,212,0.6)]">X</span>}
-                {cell === "O" && <span className="text-6xl font-black text-pink-500 drop-shadow-[0_0_15px_rgba(236,72,153,0.6)]">O</span>}
+                {cell === "X" && <span className="text-7xl font-black text-orange-500 drop-shadow-sm">X</span>}
+                {cell === "O" && <span className="text-7xl font-black text-emerald-500 drop-shadow-sm">O</span>}
               </button>
             );
           })}
         </div>
 
+        {/* Play Again Button */}
         {isFinished && !isSpectator && (
-          <button onClick={onPlayAgain} className="mt-10 px-8 py-3 bg-white text-black font-black uppercase tracking-widest text-xs rounded-xl shadow-[0_0_20px_rgba(255,255,255,0.2)] hover:shadow-[0_0_30px_rgba(255,255,255,0.4)] transition-all">
-            Restart Sequence
+          <button onClick={onPlayAgain} className="mt-12 px-8 py-4 bg-slate-800 text-white hover:bg-slate-900 font-bold text-sm rounded-2xl shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-1">
+            Play Another Round
           </button>
         )}
       </div>
 
-      {/* RIGHT COLUMN: CHAT HUD */}
-      <div className="p-4 lg:p-6 flex flex-col h-full bg-black/30 overflow-hidden lg:col-span-1">
-        <span className="text-[10px] font-mono text-gray-500 uppercase tracking-widest block mb-4 border-b border-white/10 pb-3">Global Comms Feed</span>
+      {/* RIGHT COLUMN: CHAT */}
+      <div className="p-4 lg:p-6 flex flex-col h-full bg-white overflow-hidden lg:col-span-1 shadow-[-2px_0_10px_rgba(0,0,0,0.02)] z-10">
+        <div className="pb-4 border-b border-slate-100 mb-4 shrink-0 flex items-center justify-between">
+            <span className="text-base font-black text-slate-800">Room Chat</span>
+            <span className="text-[10px] bg-slate-100 text-slate-500 px-2 py-1 rounded-md font-bold uppercase">{playingCode}</span>
+        </div>
         
-        <div className="flex-1 overflow-y-auto space-y-4 mb-4 pr-2 custom-scrollbar min-h-0">
-          {chatMessages.map((msg, idx) => {
-            const isMe = msg.sender === profile.name;
-            return (
-              <div key={idx} className={`flex items-start gap-3 text-left ${isMe ? 'flex-row-reverse' : ''}`}>
-                <img src={msg.avatar} alt="" className="w-8 h-8 rounded-md object-cover opacity-80" />
-                <div className={`p-3 rounded-xl max-w-[85%] ${isMe ? 'bg-cyan-500/10 border border-cyan-500/20 rounded-tr-none' : 'bg-[#121214] border border-white/5 rounded-tl-none'}`}>
-                  <p className={`text-[9px] font-mono tracking-widest mb-1 ${isMe ? 'text-cyan-400 text-right' : 'text-gray-500'}`}>{msg.sender}</p>
-                  <p className="text-xs text-gray-200 leading-relaxed break-words">{msg.text}</p>
+        <div className="flex-1 overflow-y-auto space-y-4 pr-2 custom-scrollbar min-h-0 flex flex-col-reverse">
+          <div className="flex flex-col gap-4">
+            {chatMessages.map((msg, idx) => {
+              const isMe = profile && msg.sender === profile.name;
+              return (
+                <div key={idx} className={`flex items-end gap-2 ${isMe ? 'flex-row-reverse' : ''}`}>
+                  <img src={msg.avatar} alt="" className="w-8 h-8 rounded-full border border-slate-200 shrink-0" />
+                  <div className={`p-3 rounded-2xl max-w-[85%] ${isMe ? 'bg-orange-500 text-white rounded-br-sm shadow-sm shadow-orange-500/20' : 'bg-slate-100 text-slate-800 rounded-bl-sm border border-slate-200'}`}>
+                    {!isMe && <p className="text-[10px] font-bold mb-0.5 text-slate-500">{msg.sender}</p>}
+                    <p className="text-sm leading-snug break-words">{msg.text}</p>
+                  </div>
                 </div>
-              </div>
-            )
-          })}
+              )
+            })}
+          </div>
         </div>
 
-        <form onSubmit={onSendChat} className="flex gap-2 shrink-0">
+        <form onSubmit={onSendChat} className="flex gap-2 pt-4 mt-2 border-t border-slate-100 shrink-0">
           <input 
             type="text" 
-            placeholder="Transmit data..." 
+            placeholder="Type a message..." 
             value={currentMessage} 
             onChange={(e) => setCurrentMessage(e.target.value)} 
-            className="flex-1 px-4 py-3 text-xs font-mono bg-[#121214] border border-white/10 focus:border-cyan-500 rounded-xl outline-none text-gray-200 placeholder-gray-600 transition-colors" 
+            className="flex-1 px-4 py-3 text-sm bg-slate-50 border border-slate-200 focus:border-orange-500 focus:ring-1 focus:ring-orange-500 rounded-xl outline-none text-slate-800 placeholder-slate-400 transition-all" 
           />
-          <button type="submit" disabled={!currentMessage.trim()} className="px-5 py-3 bg-white text-black font-black uppercase tracking-widest rounded-xl text-[10px] disabled:opacity-50 transition-opacity">
-            TX
+          <button type="submit" disabled={!currentMessage.trim()} className="px-5 py-3 bg-slate-800 hover:bg-slate-900 text-white font-bold rounded-xl disabled:opacity-50 transition-colors">
+            Send
           </button>
         </form>
       </div>
