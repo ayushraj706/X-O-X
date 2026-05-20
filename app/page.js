@@ -3,7 +3,7 @@
 // app/page.js
 // ─────────────────────────────────────────────────────────────────────────────
 // NeonX Immersive Gaming Suite — Full-Screen Stable Production Release
-// Features: Clean Architecture separation, Adaptive Entry Keys Keyboard Filters
+// Features: Dynamic Code Generation, Smart Input Keyboard Switching.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { useState, useEffect, useCallback, useRef } from "react";
@@ -146,7 +146,6 @@ export default function GamingHub() {
       if (snapshot.exists()) setActiveMembers(snapshot.val());
     });
 
-    // Start WebRTC Voice Instance utilizing separate custom controller
     if (!voiceManagerRef.current) {
       voiceManagerRef.current = new VoiceMeshManager(db, targetId, currentIdentity, triggerDiagnosticError);
       voiceManagerRef.current.startBroadcast();
@@ -221,7 +220,7 @@ export default function GamingHub() {
   const handleVerifyGateCode = async () => {
     if (!userProfile) return;
     const inputCode = gateInput.trim().toUpperCase();
-    if (!inputCode || inputCode.length < 9) {
+    if (!inputCode || inputCode.length < 11) {
       triggerDiagnosticError("Invalid input parameters structural verification.");
       return;
     }
@@ -448,8 +447,7 @@ function DashboardScreen({ onCreate, gateInput, setGateInput, onVerify, isLoadin
               onChange={handleInputChange} 
               className="flex-1 px-4 py-3.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 focus:border-indigo-500 rounded-xl outline-none font-mono text-center text-sm uppercase tracking-wider" 
             />
-            {/* FIXED: Dynamic conditional threshold length allows button execution instantly */}
-            <button onClick={onVerify} disabled={isLoading || gateInput.trim().length < 9} className="px-6 bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 rounded-xl font-black">→</button>
+            <button onClick={onVerify} disabled={isLoading || gateInput.trim().length < 11} className="px-6 bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 rounded-xl font-black">→</button>
           </div>
         </div>
       </div>
