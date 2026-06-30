@@ -1,15 +1,25 @@
 {
-  "name": "GamePlatform",
+  "name": "GamePlatform - Multiplayer Gaming",
   "short_name": "GamePlatform",
+  "description": "Play multiplayer games instantly with voice chat.",
   "start_url": "/",
   "display": "standalone",
+  "orientation": "portrait",
   "background_color": "#000000",
+  "theme_color": "#25D366",
+  "scope": "/",
   "icons": [
     {
       "src": "/logo.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/logo.png",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
     }
   ]
 }
-
