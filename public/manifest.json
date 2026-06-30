@@ -1,0 +1,15 @@
+{
+  "name": "GamePlatform",
+  "short_name": "GamePlatform",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#000000",
+  "icons": [
+    {
+      "src": "/logo.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
+
