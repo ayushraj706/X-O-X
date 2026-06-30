@@ -2,6 +2,7 @@
 import { useAuth } from '../../context/AuthContext';
 import ThemeToggle from './ThemeToggle';
 import ProfileDropdown from './ProfileDropdown';
+import { FaGamepad } from 'react-icons/fa'; // Icon import kiya
 
 export default function Navbar() {
   const { user, login } = useAuth();
@@ -9,8 +10,9 @@ export default function Navbar() {
   return (
     <nav className="sticky top-0 z-40 backdrop-blur bg-white/80 dark:bg-wa-panelDark/80 border-b border-gray-200 dark:border-gray-800 px-4 sm:px-8 py-3 flex items-center justify-between">
       <div className="flex items-center gap-2">
-        <div className="h-9 w-9 rounded-full bg-wa-gradient flex items-center justify-center text-white font-bold shadow-wa">
-          🎮
+        {/* Emoji ki jagah professional icon */}
+        <div className="h-9 w-9 rounded-full bg-wa-gradient flex items-center justify-center text-white text-xl shadow-wa">
+          <FaGamepad />
         </div>
         <span className="font-bold text-lg text-gray-900 dark:text-white">GamePlatform</span>
       </div>
