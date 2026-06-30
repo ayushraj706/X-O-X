@@ -1,142 +1,70 @@
-# NeonX — Real-time Multiplayer Tic-Tac-Toe
+# 🎮 Cloud Multiplayer Gaming Platform
 
-A production-ready, multiplayer Tic-Tac-Toe game built with **Next.js 14**, **Firebase Realtime Database**, and **Tailwind CSS**. Features a premium dark glassmorphism/neon UI with instant synchronization via room codes — no login required.
+Next.js + Firebase (Auth/Firestore) + Agora.io voice chat. Modular `games/` folder — add new games without touching platform code.
 
----
-
-## Tech Stack
-
-| Layer | Technology |
-|-------|-----------|
-| Framework | Next.js 14 (App Router) |
-| Database | Firebase Realtime Database |
-| Styling | Tailwind CSS v3 |
-| Fonts | Exo 2 + Share Tech Mono (Google Fonts) |
-
----
-
-## Project Structure
-
-```
-tictactoe/
-├── app/
-│   ├── globals.css       # Global styles, CSS variables, glassmorphism theme
-│   ├── layout.js         # Root layout with metadata
-│   └── page.js           # Entire app: HOME / WAITING / PLAYING screens
-├── lib/
-│   ├── firebase.js       # Firebase singleton initialization
-│   └── gameUtils.js      # Pure game logic (generateRoomId, checkWinner, etc.)
-├── .env.local            # Firebase credentials (fill in before running)
-├── next.config.js
-├── tailwind.config.js
-├── postcss.config.js
-├── jsconfig.json
-└── package.json
-```
-
----
-
-## Setup Instructions
-
-### 1. Create a Firebase Project
-
-1. Go to [console.firebase.google.com](https://console.firebase.google.com)
-2. Click **Add project** → follow the setup wizard (Analytics is optional)
-3. In the left sidebar, click **Build → Realtime Database**
-4. Click **Create Database** → choose a region → start in **Test Mode** (you can add security rules later)
-
-### 2. Get Your Firebase Config
-
-1. In the Firebase Console, click the ⚙️ gear icon → **Project Settings**
-2. Scroll to **Your apps** → click **</>** (Web) → register the app
-3. Copy the `firebaseConfig` values
-
-### 3. Configure Environment Variables
-
-Open `.env.local` and fill in your Firebase credentials:
-
-```env
-NEXT_PUBLIC_FIREBASE_API_KEY=AIzaSy...
-NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your-project.firebaseapp.com
-NEXT_PUBLIC_FIREBASE_DATABASE_URL=https://your-project-default-rtdb.firebaseio.com
-NEXT_PUBLIC_FIREBASE_PROJECT_ID=your-project
-NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=your-project.appspot.com
-NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=1234567890
-NEXT_PUBLIC_FIREBASE_APP_ID=1:1234567890:web:abc123
-```
-
-### 4. Install & Run
+## 1. Install
 
 ```bash
 npm install
+```
+
+## 2. Environment variables
+
+Copy `.env.local.example` → `.env.local` and fill in:
+
+- **Firebase (client)**: Firebase Console → Project Settings → General → Your apps → Web app config.
+- **Firebase Admin (server)**: Firebase Console → Project Settings → Service Accounts → Generate new private key (download JSON, copy `project_id`, `client_email`, `private_key`).
+- **Agora**: [console.agora.io](https://console.agora.io) → Create Project → copy **App ID**. Enable "App Certificate" (Primary Certificate) and copy it too — required for secure server-side token generation (`pages/api/agora/token.js`).
+
+## 3. Firebase setup
+
+1. Enable **Authentication → Sign-in method → Google**.
+2. Enable **Firestore Database** (production mode).
+3. Deploy `firestore.rules` (or paste into Firebase Console → Firestore → Rules):
+   ```bash
+   firebase deploy --only firestore:rules
+   ```
+
+## 4. Run locally
+
+```bash
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) in two browser tabs to test multiplayer locally.
+Visit `http://localhost:3000`.
 
----
+## 5. Folder structure
 
-## How to Play
+```
+pages/                      → routes + API (thin wrappers only)
+  index.js                  → Home page (game grid)
+  api/home/rooms.js         → platform-level room/signaling backend
+  api/agora/token.js        → secure Agora token generation
+  games/tic-tac-toe/        → route that renders games/tic-tac-toe/ui
+  api/games/tic-tac-toe/    → thin HTTP wrapper around games/tic-tac-toe/backend
 
-1. **Player 1** clicks **Create Room** → a 6-character Room ID is generated
-2. **Player 1** shares the Room ID with their friend
-3. **Player 2** enters the Room ID and clicks **Join Room**
-4. Both players are instantly moved to the game board
-5. Player X always goes first
-6. After a win or draw, either player can click **Play Again** to reset the board while staying in the same room
+src/                        → shared platform code (auth, theme, firebase, agora, UI)
 
----
-
-## Firebase Database Schema
-
-```json
-rooms/{roomId}: {
-  "board": ["", "", "", "", "", "", "", "", ""],
-  "turn": "X",
-  "status": "waiting | playing | finished",
-  "winner": "X | O | draw | (empty string)",
-  "winLine": [0, 1, 2]
-}
+games/                      → ⭐ ADD NEW GAMES HERE ONLY
+  tic-tac-toe/
+    index.js                → manifest (name/icon/route) — register in src/constants/gamesRegistry.js
+    ui/                     → React components for this game
+    backend/                → pure game logic + Firestore room service
 ```
 
----
+## 6. Adding a new game
 
-## Firebase Security Rules (Recommended for Production)
+1. `games/<id>/index.js` — manifest object (`id, name, icon, description, players, route`).
+2. `games/<id>/backend/` — game rules + Firestore room service (copy `roomService.js` pattern).
+3. `games/<id>/ui/` — React components, reuse `VoiceControls`, `useAuth`.
+4. `pages/games/<id>/index.js` — route that renders your game's main component.
+5. Register manifest in `src/constants/gamesRegistry.js`.
+6. (Optional) `pages/api/games/<id>/*.js` — thin wrappers if you need server-validated endpoints.
 
-Replace Test Mode rules with these in **Realtime Database → Rules**:
+## 7. Notes on "Logout All Devices"
 
-```json
-{
-  "rules": {
-    "rooms": {
-      "$roomId": {
-        ".read": true,
-        ".write": true,
-        ".validate": "newData.hasChildren(['board', 'turn', 'status', 'winner'])"
-      }
-    }
-  }
-}
-```
+Implemented via a `sessionVersion` counter on `users/{uid}`. Each device stores the version it logged in with in `localStorage`. "Logout All Devices" increments the Firestore counter; every active tab/device has a live `onSnapshot` listener (`watchSessionValidity`) that force-signs-out as soon as it detects a newer version.
 
----
+## 8. Notes on Voice Chat
 
-## Deployment (Vercel)
-
-```bash
-# Install Vercel CLI
-npm i -g vercel
-
-# Deploy
-vercel
-
-# Set environment variables in Vercel dashboard or via CLI:
-vercel env add NEXT_PUBLIC_FIREBASE_API_KEY
-# (repeat for each variable)
-```
-
----
-
-## License
-
-MIT — use freely for personal or commercial projects.
+Agora tokens are generated **server-side only** (`pages/api/agora/token.js`) — the App Certificate never reaches the browser. Mic (mute self) and Speaker (deafen incoming) are independent toggles, matching the requirement.

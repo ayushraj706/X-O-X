@@ -1,0 +1,24 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Users can read any profile (for showing names/photos in rooms),
+    // but only write their own document.
+    match /users/{userId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && request.auth.uid == userId;
+
+      match /sessions/{sessionId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+    }
+
+    // Game rooms: any signed-in user can read/join. Writes are open to
+    // signed-in users for simplicity in this boilerplate — tighten further
+    // per-game (e.g. only players in players.X/O can update board) before production.
+    match /games/{gameId}/rooms/{roomId} {
+      allow read: if request.auth != null;
+      allow create, update, delete: if request.auth != null;
+    }
+  }
+}
