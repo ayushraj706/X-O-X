@@ -1,6 +1,7 @@
 // games/tic-tac-toe/ui/RoomLobby.js
 import { useState } from 'react';
 import toast from 'react-hot-toast';
+import { FaPlus, FaGamepad, FaEye, FaThLarge } from 'react-icons/fa'; // Icons import kiye
 
 export default function RoomLobby({ onCreateRoom, onJoinRoom }) {
   const [joinCode, setJoinCode] = useState('');
@@ -35,15 +36,18 @@ export default function RoomLobby({ onCreateRoom, onJoinRoom }) {
 
   return (
     <div className="max-w-md mx-auto mt-16 p-8 rounded-2xl bg-white dark:bg-wa-panelDark border border-gray-200 dark:border-gray-800 shadow-xl">
-      <h2 className="text-2xl font-bold text-center mb-1 text-gray-900 dark:text-white">⭕❌ Tic-Tac-Toe</h2>
+      {/* Header icon update */}
+      <h2 className="text-2xl font-bold text-center mb-1 text-gray-900 dark:text-white flex items-center justify-center gap-2">
+        <FaThLarge className="text-wa-green" /> Tic-Tac-Toe
+      </h2>
       <p className="text-center text-gray-500 dark:text-gray-400 mb-6 text-sm">Zero Kattice</p>
 
       <button
         onClick={handleCreate}
         disabled={busy}
-        className="wa-btn w-full py-3 mb-6 disabled:opacity-50"
+        className="wa-btn w-full py-3 mb-6 disabled:opacity-50 flex items-center justify-center gap-2"
       >
-        ➕ Create New Room
+        <FaPlus /> Create New Room
       </button>
 
       <div className="flex items-center gap-3 mb-6">
@@ -61,8 +65,9 @@ export default function RoomLobby({ onCreateRoom, onJoinRoom }) {
       />
 
       <div className="flex gap-3 mb-4">
-        <RoleOption label="🎮 Player" value="player" current={role} onSelect={setRole} />
-        <RoleOption label="👀 Spectator" value="spectator" current={role} onSelect={setRole} />
+        {/* Role options with icons */}
+        <RoleOption label="Player" value="player" icon={<FaGamepad />} current={role} onSelect={setRole} />
+        <RoleOption label="Spectator" value="spectator" icon={<FaEye />} current={role} onSelect={setRole} />
       </div>
 
       <button
@@ -76,18 +81,18 @@ export default function RoomLobby({ onCreateRoom, onJoinRoom }) {
   );
 }
 
-function RoleOption({ label, value, current, onSelect }) {
+function RoleOption({ label, value, icon, current, onSelect }) {
   const active = current === value;
   return (
     <button
       onClick={() => onSelect(value)}
-      className={`flex-1 py-2 rounded-xl border text-sm font-medium transition ${
+      className={`flex-1 py-2 rounded-xl border text-sm font-medium transition flex items-center justify-center gap-2 ${
         active
           ? 'border-wa-green bg-wa-green/10 text-wa-greenDark dark:text-wa-green'
-          : 'border-gray-300 dark:border-gray-700 text-gray-500 dark:text-gray-400'
+          : 'border-gray-300 dark:border-gray-700 text-gray-500 dark:border-gray-600'
       }`}
     >
-      {label}
+      {icon} {label}
     </button>
   );
 }
