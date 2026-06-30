@@ -2,6 +2,7 @@
 import { useState, useRef, useEffect } from 'react';
 import Image from 'next/image';
 import { useAuth } from '../../context/AuthContext';
+import { FaSignOutAlt, FaLock } from 'react-icons/fa'; // Icons import kiye
 
 export default function ProfileDropdown() {
   const { profile, logout, logoutAll } = useAuth();
@@ -66,15 +67,15 @@ export default function ProfileDropdown() {
           <div className="border-t border-gray-200 dark:border-gray-700 p-2 space-y-1">
             <button
               onClick={() => { setOpen(false); logout(); }}
-              className="w-full text-left px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-800 dark:text-gray-200 transition"
+              className="w-full text-left px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-800 dark:text-gray-200 transition flex items-center gap-2"
             >
-              🚪 Logout
+              <FaSignOutAlt /> Logout
             </button>
             <button
               onClick={() => { setOpen(false); logoutAll(); }}
-              className="w-full text-left px-3 py-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/30 text-red-600 dark:text-red-400 transition"
+              className="w-full text-left px-3 py-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/30 text-red-600 dark:text-red-400 transition flex items-center gap-2"
             >
-              🔒 Logout All Devices
+              <FaLock /> Logout All Devices
             </button>
           </div>
         </div>
