@@ -42,52 +42,60 @@ function getOrCreateDeviceId() {
  * upserts them into Firestore `users/{uid}`.
  */
 export async function signInWithGoogle() {
-  const result = await signInWithPopup(auth, googleProvider);
-  const user = result.user;
-  const deviceId = getOrCreateDeviceId();
+  try {
+    const result = await signInWithPopup(auth, googleProvider);
+    const user = result.user;
+    const deviceId = getOrCreateDeviceId();
 
-  const userRef = doc(db, 'users', user.uid);
-  const existingSnap = await getDoc(userRef);
-  const existingData = existingSnap.exists() ? existingSnap.data() : null;
+    const userRef = doc(db, 'users', user.uid);
+    const existingSnap = await getDoc(userRef);
+    const existingData = existingSnap.exists() ? existingSnap.data() : null;
 
-  const profileData = {
-    uid: user.uid,
-    name: user.displayName || '',
-    email: user.email || '',
-    photoURL: user.photoURL || '',
-    emailVerified: user.emailVerified,
-    phoneNumber: user.phoneNumber || null,
-    providerId: user.providerData?.[0]?.providerId || 'google.com',
-    lastLoginAt: serverTimestamp(),
-    updatedAt: serverTimestamp(),
-  };
+    const profileData = {
+      uid: user.uid,
+      name: user.displayName || '',
+      email: user.email || '',
+      photoURL: user.photoURL || '',
+      emailVerified: user.emailVerified,
+      phoneNumber: user.phoneNumber || null,
+      providerId: user.providerData?.[0]?.providerId || 'google.com',
+      lastLoginAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    };
 
-  if (!existingData) {
-    profileData.createdAt = serverTimestamp();
-    profileData.sessionVersion = 0;
+    if (!existingData) {
+      profileData.createdAt = serverTimestamp();
+      profileData.sessionVersion = 0;
+    }
+
+    await setDoc(userRef, profileData, { merge: true });
+
+    // Track this device under an "activeSessions" subcollection (for display / admin tools)
+    await setDoc(
+      doc(db, 'users', user.uid, 'sessions', deviceId),
+      {
+        deviceId,
+        userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : 'unknown',
+        loginAt: serverTimestamp(),
+        active: true,
+      },
+      { merge: true }
+    );
+
+    const finalSnap = await getDoc(userRef);
+    const finalData = finalSnap.data();
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(LOCAL_SESSION_KEY, String(finalData.sessionVersion ?? 0));
+    }
+
+    return { uid: user.uid, ...finalData };
+
+  } catch (error) {
+    // YAHA ERROR PAKAD ME AAYEGA AUR SCREEN PAR DIKHEGA
+    console.error("🔥 FIREBASE ERROR DETAILS:", error.code, error.message);
+    alert(`Asli Error: ${error.message}\nError Code: ${error.code}`);
+    throw error;
   }
-
-  await setDoc(userRef, profileData, { merge: true });
-
-  // Track this device under an "activeSessions" subcollection (for display / admin tools)
-  await setDoc(
-    doc(db, 'users', user.uid, 'sessions', deviceId),
-    {
-      deviceId,
-      userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : 'unknown',
-      loginAt: serverTimestamp(),
-      active: true,
-    },
-    { merge: true }
-  );
-
-  const finalSnap = await getDoc(userRef);
-  const finalData = finalSnap.data();
-  if (typeof window !== 'undefined') {
-    localStorage.setItem(LOCAL_SESSION_KEY, String(finalData.sessionVersion ?? 0));
-  }
-
-  return { uid: user.uid, ...finalData };
 }
 
 /** Logout current device only */
