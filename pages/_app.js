@@ -9,11 +9,23 @@ export default function App({ Component, pageProps }) {
   return (
     <ThemeProvider>
       <AuthProvider>
-        {/* Head component yahan add kiya hai */}
         <Head>
           <title>GamePlatform</title>
+          
+          {/* Mobile Responsiveness */}
+          <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0" />
+          
+          {/* Manifest Link - Ye tumhari manifest.json file ko connect karta hai */}
+          <link rel="manifest" href="/manifest.json" />
+          
+          {/* Favicons */}
           <link rel="icon" href="/logo.png" />
           <link rel="apple-touch-icon" href="/logo.png" />
+          
+          {/* iOS PWA Support - Ye sabse zaroori hai "Install App" experience ke liye */}
+          <meta name="apple-mobile-web-app-capable" content="yes" />
+          <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+          <meta name="apple-mobile-web-app-title" content="GamePlatform" />
         </Head>
         
         <Toaster position="top-center" />
