@@ -1,4 +1,5 @@
 // games/tic-tac-toe/ui/Board.js
+import { FaTimes, FaRegCircle } from 'react-icons/fa';
 
 export default function Board({ board, onCellClick, winLine, disabled }) {
   return (
@@ -16,8 +17,13 @@ export default function Board({ board, onCellClick, winLine, disabled }) {
               ${!disabled && cell === null ? 'hover:border-wa-green hover:scale-[1.03] cursor-pointer' : 'cursor-default'}
             `}
           >
-            {cell === 'X' && <span className="text-wa-greenDark dark:text-wa-green">✕</span>}
-            {cell === 'O' && <span className="text-gray-700 dark:text-gray-200">○</span>}
+            {/* Yaha humne icons add kar diye hain */}
+            {cell === 'X' && (
+              <FaTimes className="text-wa-greenDark dark:text-wa-green" />
+            )}
+            {cell === 'O' && (
+              <FaRegCircle className="text-gray-700 dark:text-gray-200" />
+            )}
           </button>
         );
       })}
