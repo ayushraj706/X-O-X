@@ -11,12 +11,20 @@ export default function RoomLobby() {
   const router = useRouter();
 
   async function handleCreate() {
-    if (!user) return loginWithGoogle();
+    if (!user) {
+      await loginWithGoogle();
+      return;
+    }
     setCreating(true);
     try {
-      const roomId = await createRoom({ hostUid: user.uid, hostName: user.displayName || "White" });
+      const roomId = await createRoom({ 
+        hostUid: user.uid, 
+        hostName: user.displayName || "Player 1" 
+      });
       router.push(`/games/chess?room=${roomId}`);
-    } finally {
+    } catch (error) {
+      console.error("Room creation failed:", error);
+      alert("Could not create room. Check your connection!");
       setCreating(false);
     }
   }
@@ -27,14 +35,37 @@ export default function RoomLobby() {
   }
 
   return (
-    <div className="flex flex-col items-center gap-4 max-w-sm mx-auto">
-      <button onClick={handleCreate} disabled={creating} className="w-full px-4 py-2 rounded-full bg-whatsapp-teal font-semibold">
-        {creating ? "Creating room..." : "➕ Create Online Room"}
+    <div className="flex flex-col gap-6 p-6 rounded-2xl bg-white/5 border border-white/10 shadow-xl backdrop-blur-md">
+      {/* Create Section */}
+      <button 
+        onClick={handleCreate} 
+        disabled={creating} 
+        className="w-full py-4 rounded-xl bg-wa-green hover:bg-green-600 transition duration-200 font-bold text-white shadow-lg shadow-green-500/20"
+      >
+        {creating ? "Setting up..." : "➕ Create Online Room"}
       </button>
-      <div className="w-full flex items-center gap-2">
-        <input value={joinCode} onChange={(e) => setJoinCode(e.target.value)} placeholder="Enter Room ID"
-          className="flex-1 px-3 py-2 rounded-lg bg-whatsapp-bubble border border-white/10 outline-none" />
-        <button onClick={handleJoin} className="px-4 py-2 rounded-full bg-white/10">Join</button>
+
+      {/* Divider */}
+      <div className="flex items-center gap-4 text-gray-500 text-sm">
+        <div className="flex-1 h-px bg-white/10"></div>
+        OR
+        <div className="flex-1 h-px bg-white/10"></div>
+      </div>
+
+      {/* Join Section */}
+      <div className="flex flex-col gap-2">
+        <input 
+          value={joinCode} 
+          onChange={(e) => setJoinCode(e.target.value)} 
+          placeholder="Enter 20-char Room ID"
+          className="w-full px-4 py-3 rounded-xl bg-black/20 border border-white/10 outline-none focus:border-wa-green transition" 
+        />
+        <button 
+          onClick={handleJoin} 
+          className="w-full py-3 rounded-xl bg-white/10 hover:bg-white/20 transition font-semibold"
+        >
+          Join Room
+        </button>
       </div>
     </div>
   );
