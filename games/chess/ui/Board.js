@@ -1,7 +1,6 @@
 // games/chess/ui/Board.js
-// Click-to-select, click-to-move board (no drag-drop, keeps it simple & mobile-friendly).
 import { useState } from "react";
-import { pieceSymbol } from "./pieceSymbols";
+import { ChessPiece } from "@chess-pieces/svg"; // Professional SVG library
 
 const FILES = ["a", "b", "c", "d", "e", "f", "g", "h"];
 
@@ -11,29 +10,31 @@ export default function Board({ board, orientation = "white", legalMovesForSquar
   const ranks = orientation === "white" ? [8, 7, 6, 5, 4, 3, 2, 1] : [1, 2, 3, 4, 5, 6, 7, 8];
   const files = orientation === "white" ? FILES : [...FILES].reverse();
 
-  function squareId(file, rank) {
-    return `${file}${rank}`;
-  }
-
   function handleClick(square) {
     if (disabled) return;
+    
+    // Move logic: agar pehle se selected hai aur move legal hai
     if (selected && legalMovesForSquare?.includes(square)) {
       onMove(selected, square);
       setSelected(null);
       return;
     }
+    
+    // Square select karna
     setSelected(square);
     onSelectSquare(square);
   }
 
   return (
-    <div className="grid grid-cols-8 w-80 h-80 mx-auto rounded-lg overflow-hidden border border-white/10">
+    <div className="grid grid-cols-8 w-80 h-80 mx-auto rounded-2xl overflow-hidden border-4 border-stone-800 shadow-2xl">
       {ranks.map((rank) =>
         files.map((file) => {
-          const square = squareId(file, rank);
+          const square = `${file}${rank}`;
           const rankIdx = 8 - rank;
           const fileIdx = FILES.indexOf(file);
           const piece = board?.[rankIdx]?.[fileIdx];
+          
+          // Chess board colors (Tournament look)
           const isDark = (FILES.indexOf(file) + rank) % 2 === 0;
           const isSelected = selected === square;
           const isLegal = legalMovesForSquare?.includes(square);
@@ -43,14 +44,23 @@ export default function Board({ board, orientation = "white", legalMovesForSquar
             <button
               key={square}
               onClick={() => handleClick(square)}
-              className={`relative flex items-center justify-center text-2xl
-                ${isDark ? "bg-whatsapp-tealDark/40" : "bg-whatsapp-bubble"}
-                ${isSelected ? "ring-2 ring-whatsapp-accent" : ""}
-                ${isLastMove ? "bg-yellow-500/20" : ""}
+              className={`relative flex items-center justify-center transition-all duration-200
+                ${isDark ? "bg-stone-500" : "bg-stone-200"}
+                ${isSelected ? "ring-inset ring-4 ring-amber-400" : ""}
+                ${isLastMove ? "bg-yellow-500/30" : ""}
               `}
             >
-              {piece && <span className={piece.color === "w" ? "text-white drop-shadow" : "text-gray-900"}>{pieceSymbol(piece)}</span>}
-              {isLegal && <span className="absolute w-3 h-3 rounded-full bg-whatsapp-accent/70" />}
+              {/* Professional SVG Piece Rendering */}
+              {piece && (
+                <div className="w-full h-full p-1 select-none pointer-events-none">
+                  <ChessPiece piece={`${piece.color}${piece.type.toUpperCase()}`} />
+                </div>
+              )}
+              
+              {/* Legal Move Indicator (Tic-Tac-Toe style dot) */}
+              {isLegal && (
+                <div className="absolute w-4 h-4 rounded-full bg-black/20 animate-pulse" />
+              )}
             </button>
           );
         })
