@@ -3,7 +3,6 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { useRouter } from 'next/router';
 import toast from 'react-hot-toast';
 import Image from 'next/image';
-// Naye Icons Import kiye
 import { FaTrophy, FaRedo, FaEye, FaInfoCircle, FaUsers } from 'react-icons/fa'; 
 
 import { useAuth } from '../../../src/context/AuthContext';
@@ -24,7 +23,8 @@ import RoomLobby from './RoomLobby';
 import Board from './Board';
 import ExitButton from './ExitButton';
 
-export default function TicTacToeGame() {
+// YAHAN onPlayOffline PROP ADD KIYA HAI
+export default function TicTacToeGame({ onPlayOffline }) {
   const { user, profile } = useAuth();
   const router = useRouter();
 
@@ -90,7 +90,6 @@ export default function TicTacToeGame() {
       setMySymbol(result.symbol);
       await joinVoice(code);
       if (result.role === 'spectator' && desiredRole === 'player') {
-        // Icon update
         toast('Both player slots full — joined as Spectator', { icon: <FaEye className="text-yellow-500" /> });
       }
     } finally {
@@ -115,7 +114,6 @@ export default function TicTacToeGame() {
     if (!roomCode) return;
     unsubRoomRef.current = watchRoom(roomCode, (data) => {
       if (!data) {
-        // Icon update
         toast('Room closed', { icon: <FaInfoCircle className="text-blue-500" /> });
         setRoomCode(null);
         setRoom(null);
@@ -140,12 +138,12 @@ export default function TicTacToeGame() {
   };
 
   if (!roomCode || !room) {
-    return <RoomLobby onCreateRoom={handleCreateRoom} onJoinRoom={handleJoinRoom} />;
+    // YAHAN onPlayOffline KO LOBBY MEIN PASS KIYA HAI
+    return <RoomLobby onCreateRoom={handleCreateRoom} onJoinRoom={handleJoinRoom} onPlayOffline={onPlayOffline} />;
   }
 
   const isMyTurn = myRole === 'player' && room.turn === mySymbol && !room.winner;
   
-  // Status text with Icon
   const statusText = room.winner
     ? room.winner === 'draw'
       ? "It's a Draw!"
@@ -163,9 +161,20 @@ export default function TicTacToeGame() {
       </div>
 
       <div className="flex items-center justify-center gap-6 mb-6">
-        <PlayerBadge label="X" player={room.players?.X} active={room.turn === 'X' && !room.winner} />
+        {/* NAYA: Score pass kar rahe hain PlayerBadge ko */}
+        <PlayerBadge 
+          label="X" 
+          player={room.players?.X} 
+          active={room.turn === 'X' && !room.winner} 
+          score={room.scores?.X || 0} 
+        />
         <span className="text-gray-400 font-bold">VS</span>
-        <PlayerBadge label="O" player={room.players?.O} active={room.turn === 'O' && !room.winner} />
+        <PlayerBadge 
+          label="O" 
+          player={room.players?.O} 
+          active={room.turn === 'O' && !room.winner} 
+          score={room.scores?.O || 0} 
+        />
       </div>
 
       {myRole === 'spectator' && (
@@ -188,7 +197,7 @@ export default function TicTacToeGame() {
       {room.winner && myRole === 'player' && (
         <div className="flex justify-center mt-6">
           <button onClick={() => resetBoard(roomCode)} className="wa-btn px-6 py-3 flex items-center gap-2">
-            <FaRedo /> Play Again
+            <FaRedo /> Play Next Round
           </button>
         </div>
       )}
@@ -204,18 +213,23 @@ export default function TicTacToeGame() {
   );
 }
 
-function PlayerBadge({ label, player, active }) {
+// NAYA: Score dikhane ke liye UI update kiya
+function PlayerBadge({ label, player, active, score }) {
   return (
     <div className={`flex flex-col items-center gap-1 ${active ? 'scale-110' : 'opacity-70'} transition-transform`}>
       <div className={`h-12 w-12 rounded-full overflow-hidden ring-2 ${active ? 'ring-wa-green' : 'ring-gray-300 dark:ring-gray-700'} flex items-center justify-center bg-gray-100 dark:bg-gray-800`}>
         {player?.photoURL ? (
-          <Image src={player.photoURL} alt={player.name} width={48} height={48} className="object-cover" />
+          <Image src={player.photoURL} alt={player?.name || 'Player'} width={48} height={48} className="object-cover" />
         ) : (
           <span className="text-xl font-bold text-gray-400">{label}</span>
         )}
       </div>
       <span className="text-xs text-gray-600 dark:text-gray-300 max-w-[80px] truncate">
         {player?.name || 'Waiting…'}
+      </span>
+      {/* Score Tracker */}
+      <span className="font-bold text-wa-greenDark dark:text-wa-green text-sm">
+        Score: {score}
       </span>
     </div>
   );
