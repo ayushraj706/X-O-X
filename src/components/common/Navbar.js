@@ -1,4 +1,5 @@
 // src/components/common/Navbar.js
+import Image from 'next/image'; // <-- Naya import add kiya
 import { useAuth } from '../../context/AuthContext';
 import ThemeToggle from './ThemeToggle';
 import ProfileDropdown from './ProfileDropdown';
@@ -9,12 +10,15 @@ export default function Navbar() {
   return (
     <nav className="sticky top-0 z-40 backdrop-blur bg-white/80 dark:bg-wa-panelDark/80 border-b border-gray-200 dark:border-gray-800 px-4 sm:px-8 py-3 flex items-center justify-between">
       <div className="flex items-center gap-2">
-        {/* Custom Logo Image */}
-        <div className="h-9 w-9 rounded-full bg-wa-gradient flex items-center justify-center shadow-wa overflow-hidden">
-          <img 
+        {/* Custom Logo Image with Next.js Image Component for Performance */}
+        <div className="h-9 w-9 rounded-full bg-wa-gradient flex items-center justify-center shadow-wa overflow-hidden relative">
+          <Image 
             src="/logo.png" 
             alt="GamePlatform Logo" 
-            className="h-full w-full object-cover" 
+            width={36} 
+            height={36}
+            className="object-cover" 
+            priority // <-- Ye image ko turant load karega (LCP fast hoga)
           />
         </div>
         <span className="font-bold text-lg text-gray-900 dark:text-white">GamePlatform</span>
