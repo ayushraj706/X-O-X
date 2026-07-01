@@ -18,6 +18,7 @@ export default function Home() {
       <Navbar />
 
       <main className="max-w-6xl mx-auto px-4 sm:px-8 py-10">
+        {/* H1 Heading Section */}
         <section className="mb-10 text-center">
           <h1 className="text-3xl sm:text-4xl font-extrabold text-gray-900 dark:text-white">
             Play Multiplayer Games <span className="text-wa-green">Instantly</span>
@@ -33,10 +34,16 @@ export default function Home() {
           </div>
         )}
 
-        <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {GAMES.map((game) => (
-            <GameCard key={game.id} game={game} />
-          ))}
+        {/* Games Grid Section */}
+        <section>
+          {/* Lighthouse Accessibility Fix: sr-only se UI pe kuch nahi dikhega, par hierarchy maintain ho jayegi */}
+          <h2 className="sr-only">Available Games</h2>
+          
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {GAMES.map((game) => (
+              <GameCard key={game.id} game={game} />
+            ))}
+          </div>
         </section>
       </main>
     </div>
