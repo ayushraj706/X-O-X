@@ -1,15 +1,13 @@
 // games/chess/ui/ChessGame.js
 import { useEffect, useState } from "react";
 import { Chess } from "chess.js";
+import { useRouter } from "next/router";
 import Board from "./Board";
 import VoiceControls from "../../../src/components/voice/VoiceControls";
 import { useAuth } from "../../../src/context/AuthContext";
-import {
-  subscribeToRoom, joinRoomAsPlayer, joinRoomAsSpectator, commitMove, rematch
-} from "../backend/roomService";
+import { subscribeToRoom, joinRoomAsPlayer, joinRoomAsSpectator, commitMove, rematch } from "../backend/roomService";
 import { playSound } from "../../../src/lib/sound";
 import { SOUNDS } from "./sounds";
-import { useRouter } from "next/router";
 
 export default function ChessGame({ roomId }) {
   const { user, loginWithGoogle } = useAuth();
@@ -19,9 +17,6 @@ export default function ChessGame({ roomId }) {
   const [legalMoves, setLegalMoves] = useState([]);
   const [lastMove, setLastMove] = useState(null);
   const [prevHistLen, setPrevHistLen] = useState(0);
-
-  // Exit Room Handler
-  const handleExit = () => router.push('/games/chess');
 
   useEffect(() => {
     if (!roomId) return;
@@ -37,10 +32,7 @@ export default function ChessGame({ roomId }) {
 
   useEffect(() => {
     if (!user || !roomId || !room) return;
-    const alreadyIn =
-      room.players.white?.uid === user.uid ||
-      room.players.black?.uid === user.uid ||
-      room.spectators?.some((s) => s.uid === user.uid);
+    const alreadyIn = room.players.white?.uid === user.uid || room.players.black?.uid === user.uid || room.spectators?.some((s) => s.uid === user.uid);
     if (alreadyIn) return;
 
     if (!room.players.black) {
@@ -50,23 +42,8 @@ export default function ChessGame({ roomId }) {
     }
   }, [user, roomId, room?.id]);
 
-  useEffect(() => {
-    if (!room?.game) return;
-    const hist = room.game.history || [];
-    if (hist.length === prevHistLen) return;
-    setPrevHistLen(hist.length);
-    const last = hist[hist.length - 1];
-    if (!last) return;
-    setLastMove({ from: last.from, to: last.to });
-
-    if (room.game.isCheckmate) playSound(SOUNDS.checkmate);
-    else if (room.game.isCheck) playSound(SOUNDS.check);
-    else if (last.captured) playSound(SOUNDS.capture);
-    else playSound(SOUNDS.move);
-  }, [room?.game?.history?.length]);
-
-  if (!user) return <div className="text-center p-10"><button onClick={loginWithGoogle} className="px-6 py-3 rounded-xl bg-wa-green text-white font-bold">Sign in with Google</button></div>;
-  if (!room) return <p className="text-center text-gray-400 p-10">Loading game room...</p>;
+  if (!user) return <div className="text-center p-8"><button onClick={loginWithGoogle} className="px-6 py-3 rounded-2xl bg-whatsapp-teal font-bold shadow-lg">Sign in with Google</button></div>;
+  if (!room) return <p className="text-center text-gray-400 p-8">Loading...</p>;
 
   const isSpectator = role === "spectator";
   const myColorCode = role === "white" ? "w" : role === "black" ? "b" : null;
@@ -86,15 +63,14 @@ export default function ChessGame({ roomId }) {
   }
 
   return (
-    <div className="flex flex-col items-center gap-6 pb-20">
-      {/* Top Header */}
-      <div className="flex items-center justify-between w-full max-w-sm px-4">
-        <button onClick={handleExit} className="text-xs px-3 py-1 rounded-full bg-white/5 hover:bg-red-500/20 text-gray-400 hover:text-red-400 transition">Exit Room</button>
-        <span className="font-mono text-xs text-whatsapp-teal">{roomId.slice(0, 8)}...</span>
+    <div className="flex flex-col items-center gap-6 p-4">
+      {/* Premium Header */}
+      <div className="flex justify-between w-full max-w-[320px]">
+        <button onClick={() => router.push('/games')} className="px-4 py-2 rounded-xl bg-white/5 hover:bg-red-500/20 text-sm font-semibold transition">← Exit</button>
+        <div className="text-xs text-gray-500 font-mono">ROOM: {roomId.slice(-6)}</div>
       </div>
 
-      {/* Players Section with Avatars */}
-      <div className="flex gap-4 w-full max-w-sm px-4">
+      <div className="flex gap-2 w-full max-w-[320px]">
         <PlayerTag label="White" info={room.players.white} active={room.game?.turn === "white"} />
         <PlayerTag label="Black" info={room.players.black} active={room.game?.turn === "black"} />
       </div>
@@ -109,6 +85,10 @@ export default function ChessGame({ roomId }) {
         disabled={isSpectator || !isMyTurn || room.game?.isGameOver}
       />
 
+      {room.game?.isGameOver && (
+        <button onClick={() => rematch(roomId)} className="px-8 py-3 rounded-2xl bg-whatsapp-teal font-bold shadow-xl shadow-whatsapp-teal/20">Play Rematch</button>
+      )}
+      
       <VoiceControls roomId={roomId} uid={user.uid} />
     </div>
   );
@@ -116,11 +96,11 @@ export default function ChessGame({ roomId }) {
 
 function PlayerTag({ label, info, active }) {
   return (
-    <div className={`flex items-center gap-3 px-3 py-2 rounded-xl flex-1 ${active ? "bg-whatsapp-teal/20 border border-whatsapp-teal/50" : "bg-white/5"}`}>
-      <img src={info?.photoURL || "/avatar.png"} className="w-8 h-8 rounded-full border border-white/10" alt="avatar" />
-      <div className="flex flex-col overflow-hidden">
-        <span className="text-[9px] uppercase tracking-widest text-gray-500">{label}</span>
-        <span className="text-sm font-bold truncate">{info?.name || "Waiting..."}</span>
+    <div className={`flex items-center gap-3 p-3 rounded-2xl flex-1 ${active ? "bg-whatsapp-teal/20 border border-whatsapp-teal" : "bg-white/5"}`}>
+      <img src={info?.photoURL || "/avatar.png"} className="w-10 h-10 rounded-full" />
+      <div className="flex flex-col">
+        <span className="text-[10px] text-gray-400 uppercase">{label}</span>
+        <span className="font-bold text-sm">{info?.name || "Waiting..."}</span>
       </div>
     </div>
   );
