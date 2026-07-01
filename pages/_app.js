@@ -12,8 +12,8 @@ export default function App({ Component, pageProps }) {
         <Head>
           <title>GamePlatform</title>
           
-          {/* Mobile Responsiveness */}
-          <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0" />
+          {/* Mobile Responsiveness (PageSpeed Accessibility Fix: user-scalable=0 hata diya) */}
+          <meta name="viewport" content="width=device-width, initial-scale=1" />
           
           {/* Manifest Link - Ye tumhari manifest.json file ko connect karta hai */}
           <link rel="manifest" href="/manifest.json" />
