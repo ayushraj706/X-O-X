@@ -1,8 +1,13 @@
 // games/chess/ui/Board.js
 import { useState } from "react";
-import { ChessPiece } from "@chess-pieces/svg"; // Professional SVG library
 
 const FILES = ["a", "b", "c", "d", "e", "f", "g", "h"];
+
+// Professional Unicode chess pieces (No external library needed)
+const PIECE_MAP = {
+  wP: "♙", wR: "♖", wN: "♘", wB: "♗", wQ: "♕", wK: "♔",
+  bP: "♟", bR: "♜", bN: "♞", bB: "♝", bQ: "♛", bK: "♚"
+};
 
 export default function Board({ board, orientation = "white", legalMovesForSquare, onSelectSquare, onMove, disabled, lastMove }) {
   const [selected, setSelected] = useState(null);
@@ -13,14 +18,12 @@ export default function Board({ board, orientation = "white", legalMovesForSquar
   function handleClick(square) {
     if (disabled) return;
     
-    // Move logic: agar pehle se selected hai aur move legal hai
     if (selected && legalMovesForSquare?.includes(square)) {
       onMove(selected, square);
       setSelected(null);
       return;
     }
     
-    // Square select karna
     setSelected(square);
     onSelectSquare(square);
   }
@@ -34,8 +37,7 @@ export default function Board({ board, orientation = "white", legalMovesForSquar
           const fileIdx = FILES.indexOf(file);
           const piece = board?.[rankIdx]?.[fileIdx];
           
-          // Chess board colors (Tournament look)
-          const isDark = (FILES.indexOf(file) + rank) % 2 === 0;
+          const isDark = (FILES.indexOf(file) + (rank % 2)) % 2 === 0;
           const isSelected = selected === square;
           const isLegal = legalMovesForSquare?.includes(square);
           const isLastMove = lastMove && (lastMove.from === square || lastMove.to === square);
@@ -50,14 +52,14 @@ export default function Board({ board, orientation = "white", legalMovesForSquar
                 ${isLastMove ? "bg-yellow-500/30" : ""}
               `}
             >
-              {/* Professional SVG Piece Rendering */}
+              {/* Unicode Piece Rendering */}
               {piece && (
-                <div className="w-full h-full p-1 select-none pointer-events-none">
-                  <ChessPiece piece={`${piece.color}${piece.type.toUpperCase()}`} />
-                </div>
+                <span className={`text-4xl select-none pointer-events-none ${piece.color === 'w' ? 'text-white drop-shadow-md' : 'text-stone-900'}`}>
+                  {PIECE_MAP[`${piece.color}${piece.type.toUpperCase()}`]}
+                </span>
               )}
               
-              {/* Legal Move Indicator (Tic-Tac-Toe style dot) */}
+              {/* Tic-Tac-Toe style Legal Move Indicator */}
               {isLegal && (
                 <div className="absolute w-4 h-4 rounded-full bg-black/20 animate-pulse" />
               )}
