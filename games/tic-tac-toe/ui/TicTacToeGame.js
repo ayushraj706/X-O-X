@@ -4,10 +4,14 @@ import { useRouter } from 'next/router';
 import toast from 'react-hot-toast';
 import Image from 'next/image';
 import { FaTrophy, FaRedo, FaEye, FaInfoCircle, FaUsers } from 'react-icons/fa'; 
+import useSound from 'use-sound'; // Sound Library import ki hai
 
 import { useAuth } from '../../../src/context/AuthContext';
 import { createVoiceChannel } from '../../../src/lib/agora/agoraClient';
 import VoiceControls from '../../../src/components/voice/VoiceControls';
+
+// Sound File Import
+import { SOUNDS } from './sounds'; 
 
 import {
   createRoom,
@@ -34,8 +38,25 @@ export default function TicTacToeGame({ onPlayOffline }) {
   const [mySymbol, setMySymbol] = useState(null);
   const [loading, setLoading] = useState(false);
 
+  // ---------- Sound Hooks ----------
+  const [playMove] = useSound(SOUNDS.move);
+  const [playWin] = useSound(SOUNDS.checkmate); // checkmate sound for win
+  const [playDraw] = useSound(SOUNDS.draw);
+  const [playInvalid] = useSound(SOUNDS.invalid);
+
   const voiceChannelRef = useRef(null);
   const unsubRoomRef = useRef(null);
+
+  // ---------- Sound Effect Trigger ----------
+  // Ye useEffect track karega ki game kab khatam hua, aur us hisab se aawaz nikalega
+  useEffect(() => {
+    if (!room?.winner) return;
+    if (room.winner === 'draw') {
+      playDraw();
+    } else {
+      playWin();
+    }
+  }, [room?.winner, playWin, playDraw]);
 
   // ---------- Voice chat lifecycle ----------
   const joinVoice = useCallback(async (code) => {
@@ -131,10 +152,23 @@ export default function TicTacToeGame({ onPlayOffline }) {
   }, [leaveVoice]);
 
   const handleCellClick = async (index) => {
+    // Agar user spectator hai ya room load nahi hua
     if (myRole !== 'player' || !mySymbol || !room) return;
+    
+    // Agar kisi ne jeet liya, ya dusre ki turn hai, ya box bhara hua hai -> Error sound bajao
+    if (room.winner || room.turn !== mySymbol || room.board[index]) {
+      playInvalid();
+      return;
+    }
+
     try {
+      // Valid move par move ki aawaz bajao
+      playMove();
       await makeMove({ roomCode, index, symbol: mySymbol, currentRoomData: room });
-    } catch (e) {}
+    } catch (e) {
+      console.error(e);
+      playInvalid(); // Agar backend fail hua tab bhi invalid sound de do
+    }
   };
 
   if (!roomCode || !room) {
@@ -161,7 +195,7 @@ export default function TicTacToeGame({ onPlayOffline }) {
       </div>
 
       <div className="flex items-center justify-center gap-6 mb-6">
-        {/* NAYA: Score pass kar rahe hain PlayerBadge ko */}
+        {/* Score pass kar rahe hain PlayerBadge ko */}
         <PlayerBadge 
           label="X" 
           player={room.players?.X} 
@@ -213,7 +247,7 @@ export default function TicTacToeGame({ onPlayOffline }) {
   );
 }
 
-// NAYA: Score dikhane ke liye UI update kiya
+// Score dikhane ke liye UI update kiya
 function PlayerBadge({ label, player, active, score }) {
   return (
     <div className={`flex flex-col items-center gap-1 ${active ? 'scale-110' : 'opacity-70'} transition-transform`}>
