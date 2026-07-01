@@ -1,6 +1,8 @@
 // games/tic-tac-toe/ui/LocalGame.js
 import { useState } from 'react';
-import { FaTimes, FaRegCircle } from 'react-icons/fa'; // Naye icons add kiye
+import { FaTimes, FaRegCircle } from 'react-icons/fa';
+import useSound from 'use-sound'; // Sound library import
+import { SOUNDS } from './sounds'; // Ensure this file path is correct
 
 export default function LocalGame() {
   const [board, setBoard] = useState(Array(9).fill(null));
@@ -8,19 +10,34 @@ export default function LocalGame() {
   const [scores, setScores] = useState({ X: 0, O: 0 });
   const [xStarts, setXStarts] = useState(true);
 
-  // Ab calculateWinner winner ke sath-sath winLine (kin 3 boxes se jeeta) bhi deta hai
+  // Sound Hooks
+  const [playMove] = useSound(SOUNDS.move);
+  const [playWin] = useSound(SOUNDS.checkmate); // Using checkmate sound for win
+  const [playDraw] = useSound(SOUNDS.draw);
+  const [playInvalid] = useSound(SOUNDS.invalid);
+
   const { winner, winLine } = calculateWinner(board);
 
   const handleClick = (index) => {
-    if (board[index] || winner) return;
+    // Invalid click check
+    if (board[index] || winner) {
+      playInvalid(); 
+      return;
+    }
 
     const newBoard = [...board];
     newBoard[index] = xIsNext ? 'X' : 'O';
     setBoard(newBoard);
     
+    // Play move sound
+    playMove();
+    
     const winResult = calculateWinner(newBoard);
     if (winResult.winner) {
       setScores((prev) => ({ ...prev, [winResult.winner]: prev[winResult.winner] + 1 }));
+      playWin(); // Win sound
+    } else if (!newBoard.includes(null)) {
+      playDraw(); // Draw sound
     } else {
       setXIsNext(!xIsNext);
     }
@@ -49,24 +66,20 @@ export default function LocalGame() {
         </div>
       </div>
 
-      {/* Game Board (Chamakne wala logic yahan hai) */}
+      {/* Game Board */}
       <div className="grid grid-cols-3 gap-3 w-full max-w-sm mx-auto mb-8">
         {board.map((cell, idx) => {
-          // Check karo ki kya ye dabba jeetne wali line mein hai
           const isWinCell = winLine?.includes(idx);
-          
           return (
             <button
               key={idx}
               onClick={() => handleClick(idx)}
-              disabled={cell !== null || winner}
               className={`aspect-square rounded-2xl text-5xl font-extrabold flex items-center justify-center transition-all duration-300
                 ${isWinCell 
-                  ? 'bg-wa-gradient text-white shadow-wa scale-[1.08] z-10 border-2 border-wa-green' // Chamakne wala effect
+                  ? 'bg-wa-gradient text-white shadow-wa scale-[1.08] z-10 border-2 border-wa-green' 
                   : 'bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 hover:border-wa-green hover:scale-[1.03]'} 
               `}
             >
-              {/* Jeetne par icon white ho jayega, warna apne color ka rahega */}
               {cell === 'X' && (
                 <FaTimes className={isWinCell ? 'text-white drop-shadow-md' : 'text-wa-greenDark dark:text-wa-green'} />
               )}
@@ -85,16 +98,12 @@ export default function LocalGame() {
             <p className="text-2xl text-wa-green font-bold mb-4 animate-bounce">
               Player {winner} Wins! 🎉
             </p>
-            <button onClick={resetGame} className="wa-btn px-8 py-3">
-              Play Next Round
-            </button>
+            <button onClick={resetGame} className="wa-btn px-8 py-3">Play Next Round</button>
           </>
         ) : !board.includes(null) ? (
           <>
             <p className="text-2xl text-gray-500 font-bold mb-4">It's a Draw! 🤝</p>
-            <button onClick={resetGame} className="wa-btn px-8 py-3">
-              Play Again
-            </button>
+            <button onClick={resetGame} className="wa-btn px-8 py-3">Play Again</button>
           </>
         ) : (
           <p className="text-lg font-medium text-gray-600 dark:text-gray-300">
@@ -106,17 +115,12 @@ export default function LocalGame() {
   );
 }
 
-// ADVANCED WINNER LOGIC: Ab ye winner ke sath winLine bhi batayega
 function calculateWinner(squares) {
-  const lines = [
-    [0, 1, 2], [3, 4, 5], [6, 7, 8], // Rows
-    [0, 3, 6], [1, 4, 7], [2, 5, 8], // Cols
-    [0, 4, 8], [2, 4, 6]             // Diagonals
-  ];
+  const lines = [[0, 1, 2], [3, 4, 5], [6, 7, 8], [0, 3, 6], [1, 4, 7], [2, 5, 8], [0, 4, 8], [2, 4, 6]];
   for (let i = 0; i < lines.length; i++) {
     const [a, b, c] = lines[i];
     if (squares[a] && squares[a] === squares[b] && squares[a] === squares[c]) {
-      return { winner: squares[a], winLine: [a, b, c] }; // Yahan se line return ho rahi hai
+      return { winner: squares[a], winLine: [a, b, c] };
     }
   }
   return { winner: null, winLine: null };
