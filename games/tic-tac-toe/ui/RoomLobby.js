@@ -1,9 +1,9 @@
 // games/tic-tac-toe/ui/RoomLobby.js
 import { useState } from 'react';
 import toast from 'react-hot-toast';
-import { FaPlus, FaGamepad, FaEye, FaThLarge } from 'react-icons/fa'; // Icons import kiye
+import { FaPlus, FaGamepad, FaEye, FaThLarge, FaUserFriends } from 'react-icons/fa'; // FaUserFriends add kiya
 
-export default function RoomLobby({ onCreateRoom, onJoinRoom }) {
+export default function RoomLobby({ onCreateRoom, onJoinRoom, onPlayOffline }) { // onPlayOffline prop add kiya
   const [joinCode, setJoinCode] = useState('');
   const [role, setRole] = useState('player');
   const [busy, setBusy] = useState(false);
@@ -73,9 +73,23 @@ export default function RoomLobby({ onCreateRoom, onJoinRoom }) {
       <button
         onClick={handleJoin}
         disabled={busy}
-        className="wa-btn w-full py-3 disabled:opacity-50"
+        className="wa-btn w-full py-3 disabled:opacity-50 mb-6"
       >
         Join Room
+      </button>
+
+      {/* NAYA OFFLINE SECTION */}
+      <div className="flex items-center gap-3 mb-6">
+        <div className="flex-1 h-px bg-gray-200 dark:bg-gray-700" />
+        <span className="text-xs text-gray-400">OR PLAY LOCALLY</span>
+        <div className="flex-1 h-px bg-gray-200 dark:bg-gray-700" />
+      </div>
+
+      <button
+        onClick={onPlayOffline}
+        className="w-full py-3 rounded-xl border-2 border-wa-green text-wa-greenDark dark:text-wa-green font-bold hover:bg-wa-green/10 transition flex items-center justify-center gap-2"
+      >
+        <FaUserFriends /> Play Offline (Pass & Play)
       </button>
     </div>
   );
