@@ -1,22 +1,22 @@
-// pages/games/carrom/index.js
+// pages/games/chess/index.js
 import { useState } from "react";
 import { useRouter } from "next/router";
 import Navbar from "../../../src/components/common/Navbar"; // Path fixed
-import LocalGame from "../../../games/carrom/ui/LocalGame";
-import CarromGame from "../../../games/carrom/ui/CarromGame";
-import RoomLobby from "../../../games/carrom/ui/RoomLobby";
+import LocalGame from "../../../games/chess/ui/LocalGame";
+import ChessGame from "../../../games/chess/ui/ChessGame";
+import RoomLobby from "../../../games/chess/ui/RoomLobby";
 
-export default function CarromPage() {
+export default function ChessPage() {
   const router = useRouter();
   const { room } = router.query;
   // Mode ko 'select' se start karenge taaki user choose kar sake
-  const [mode, setMode] = useState("select"); 
+  const [mode, setMode] = useState(room ? "online" : "select");
 
   return (
     <div className="min-h-screen">
       <Navbar />
       <main className="max-w-2xl mx-auto px-4 py-8">
-        <h1 className="text-2xl font-bold mb-6 text-center">🎯 Carrom</h1>
+        <h1 className="text-2xl font-bold mb-6 text-center">♟️ Chess</h1>
         
         {mode === "select" && (
           <div className="flex flex-col gap-4 mt-10">
@@ -35,7 +35,7 @@ export default function CarromPage() {
           </div>
         )}
 
-        {/* Yahan wahi logic hai jo tumne photo mein dikhaya */}
+        {/* Mode logic for Local and Online */}
         {mode === "local" && (
           <div className="mt-4">
             <button onClick={() => setMode("select")} className="mb-4 text-sm text-gray-400">← Back</button>
@@ -46,7 +46,7 @@ export default function CarromPage() {
         {mode === "online" && (
           <div className="mt-4">
             <button onClick={() => setMode("select")} className="mb-4 text-sm text-gray-400">← Back</button>
-            {room ? <CarromGame roomId={room} /> : <RoomLobby />}
+            {room ? <ChessGame roomId={room} /> : <RoomLobby />}
           </div>
         )}
       </main>
