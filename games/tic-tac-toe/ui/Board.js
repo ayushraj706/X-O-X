@@ -6,9 +6,14 @@ export default function Board({ board, onCellClick, winLine, disabled }) {
     <div className="grid grid-cols-3 gap-3 w-full max-w-sm mx-auto">
       {board.map((cell, i) => {
         const isWinCell = winLine?.includes(i);
+        
+        // Lighthouse Accessibility (Score 100) ke liye aria-label
+        const ariaLabel = cell ? `Cell ${i}, occupied by ${cell}` : `Empty cell ${i}`;
+
         return (
           <button
             key={i}
+            aria-label={ariaLabel}
             onClick={() => onCellClick(i)}
             disabled={disabled || cell !== null}
             className={`aspect-square rounded-2xl text-4xl sm:text-5xl font-bold flex items-center justify-center transition-all duration-150
