@@ -1,4 +1,4 @@
-// games/chess/ui/LocalGame.js — offline pass & play, pure client-side chess.js instance
+// games/chess/ui/LocalGame.js
 import { useState } from "react";
 import { Chess } from "chess.js";
 import Board from "./Board";
@@ -27,6 +27,7 @@ export default function LocalGame() {
     const next = serialize(chess);
     setState(next);
 
+    // Sounds
     if (next.isCheckmate) playSound(SOUNDS.checkmate);
     else if (next.isCheck) playSound(SOUNDS.check);
     else if (move.captured) playSound(SOUNDS.capture);
@@ -43,9 +44,14 @@ export default function LocalGame() {
   }
 
   return (
-    <div className="flex flex-col items-center gap-4">
-      <p className="text-sm text-gray-400">Local Pass & Play — no internet needed</p>
+    <div className="flex flex-col items-center gap-6 p-4">
+      <div className="text-center">
+        <h2 className="text-xl font-bold text-white">Local Chess</h2>
+        <p className="text-xs text-gray-500 uppercase tracking-widest">Offline Pass & Play</p>
+      </div>
+      
       <StatusBar state={state} />
+      
       <Board
         board={state.board}
         legalMovesForSquare={legalMoves}
@@ -54,8 +60,9 @@ export default function LocalGame() {
         lastMove={lastMove}
         disabled={state.isGameOver}
       />
+      
       {state.isGameOver && (
-        <button onClick={reset} className="px-4 py-2 rounded-full bg-whatsapp-teal">
+        <button onClick={reset} className="px-8 py-3 rounded-2xl bg-whatsapp-teal font-bold shadow-lg transition hover:scale-105">
           Play Again
         </button>
       )}
@@ -64,9 +71,17 @@ export default function LocalGame() {
 }
 
 function StatusBar({ state }) {
-  if (state.isCheckmate) return <p className="font-semibold text-whatsapp-teal">🏆 Checkmate — {state.turn === "white" ? "Black" : "White"} wins!</p>;
-  if (state.isStalemate) return <p className="font-semibold text-amber-400">🤝 Stalemate</p>;
-  if (state.isDraw) return <p className="font-semibold text-amber-400">🤝 Draw</p>;
-  if (state.isCheck) return <p className="font-semibold text-red-400">⚠️ Check! {state.turn}'s turn</p>;
-  return <p className="text-gray-300">Turn: <span className="font-bold capitalize">{state.turn}</span></p>;
+  const getStatusContent = () => {
+    if (state.isCheckmate) return { text: `Checkmate — ${state.turn === "white" ? "Black" : "White"} wins!`, color: "text-whatsapp-teal" };
+    if (state.isStalemate || state.isDraw) return { text: "Draw / Stalemate", color: "text-amber-400" };
+    if (state.isCheck) return { text: "⚠️ Check!", color: "text-red-400" };
+    return { text: `Turn: ${state.turn.toUpperCase()}`, color: "text-white" };
+  };
+
+  const { text, color } = getStatusContent();
+  return (
+    <div className={`px-4 py-2 rounded-xl bg-white/5 font-mono text-sm ${color}`}>
+      {text}
+    </div>
+  );
 }
